@@ -1,7 +1,5 @@
 # P3 Project History and Desktop Interop Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Add authenticated persistent projects, immutable case versions and calculation records, controlled DWSIM export, legacy history migration, and verified desktop interoperability without touching production.
 
 **Architecture:** Store project metadata and immutable JSON snapshots in SQLite on a dedicated Docker volume. Generate export IDs and paths only on the server, save the active DWSIM flowsheet before cleanup into a shared project volume, and expose downloads only through owner-checked ID mappings.
@@ -102,8 +100,7 @@
 
 **Steps:**
 1. Copy one candidate-exported `.dwxml` to the Windows QA directory without changing bytes and record SHA-256.
-2. Open with the installed DWSIM 10.2.8 desktop/Automation path, explicitly recalculate, and save a new file.
-3. Compare key saved XML results against the server record using predeclared tolerances; also perturb one target and prove recalculation changes the result.
-4. Record executable/runtime identity, driver provenance, commands, outputs, and evidence hashes without claiming experimental accuracy.
+2. Use the installed DWSIM 10.2.8 desktop UI to visibly open the exported model, trigger recalculation, inspect the solved flowsheet, and save a new file; Automation may only provide supplementary evidence.
+3. Compare key desktop-saved results against the server record using predeclared tolerances; also change one target in the desktop UI, recalculate, and prove the result changes.
+4. Record desktop executable/runtime identity, screenshots or screen recording, saved files, outputs, and evidence hashes without claiming experimental accuracy. If desktop UI operation is blocked, retain exact blocker evidence and leave the desktop gate unpassed rather than substituting the P2 Automation check.
 5. Commit QA documents, push normally to `origin/main`, and report the complete candidate to total control. Stop before production deployment.
-
