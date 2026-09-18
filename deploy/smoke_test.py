@@ -54,7 +54,7 @@ assert catalog['counts']['mcp_tools'] == 48
 assert catalog['counts']['unit_operations'] == 44
 assert catalog['counts']['property_packages'] == 28
 assert catalog['counts']['compounds'] >= 1500
-assert catalog['counts']['live_workflows'] == 9
+assert catalog['counts']['live_workflows'] == 10
 assert sum(group['count'] for group in catalog['tool_groups']) == 48
 assert set(module['type'] for group in catalog['unit_groups'] for module in group['modules']
            if module['state'] == 'live') == {
