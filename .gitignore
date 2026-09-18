@@ -1,0 +1,16 @@
+# Local SDK, credentials, upstream research sources and generated reports stay local.
+.local/
+调研/
+**/__pycache__/
+**/*.pyc
+本地演示/runs/
+本地演示/verification.json
+.env
+**/.env
+deploy/secrets/
+*.log
+*.pid
+*.pem
+*.key
+id_ed25519*
+id_rsa*

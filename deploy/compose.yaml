@@ -1,0 +1,64 @@
+name: ecop
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:${ECOP_HOST_PORT:-18765}:8000"
+    environment:
+      ECOP_PUBLIC_ORIGIN: "${ECOP_PUBLIC_ORIGIN:?Set HTTPS public origin}"
+      ECOP_USER: "${ECOP_USER:-ecop}"
+      ECOP_PASSWORD_FILE: /run/secrets/ecop_password
+      DWSIM_MCP_URL: http://dwsim:5901/mcp
+      DWSIM_TOKEN_FILE: /run/secrets/mcp_token
+      DWSIM_BUILD_REFERENCE: "image:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36"
+      ECOP_RUNS_DIR: /data/runs
+    secrets: [ecop_password, mcp_token]
+    volumes: [runs:/data]
+    networks: [engine]
+    depends_on: [dwsim]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  dwsim:
+    image: ghcr.io/danwbr/dwsim-mcp:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    # Official executable path and flags verified against upstream Dockerfile/Program.cs.
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - 'exec /opt/dwsim-mcp/dwsim-mcp --http --host 0.0.0.0 --port 5901 --token "$$(cat /run/secrets/mcp_token)"'
+    secrets: [mcp_token]
+    networks: [engine]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 4g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+networks:
+  engine:
+    internal: true
+volumes:
+  runs:
+secrets:
+  ecop_password:
+    file: ./secrets/ecop_password.txt
+  mcp_token:
+    file: ./secrets/mcp_token.txt

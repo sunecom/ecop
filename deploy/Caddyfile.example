@@ -1,0 +1,9 @@
+# Merge this site block into the server's existing proxy; do not replace other sites.
+ecop.aitomoney.online {
+    encode gzip
+    header Strict-Transport-Security "max-age=31536000"
+    request_body {
+        max_size 4KB
+    }
+    reverse_proxy 127.0.0.1:18765
+}

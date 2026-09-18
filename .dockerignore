@@ -1,0 +1,9 @@
+**
+!deploy/
+!deploy/Dockerfile
+!deploy/requirements.txt
+!本地演示/
+!本地演示/server.py
+!本地演示/cloud_app.py
+!本地演示/index.html
+!本地演示/logo.png
