@@ -157,6 +157,22 @@ class AdvancedUnitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '仅接受纯水蒸汽'):
             advanced_units.run_compressor(COMPRESSOR, tool)
 
+    def test_heat_exchanger_rejects_pressure_mismatch(self):
+        tool = heat_exchanger_replay()
+        tool.streams['HOT-OUT']['pressure_Pa'] = 280000
+        tool.streams['COLD-OUT']['pressure_Pa'] = 290000
+        with self.assertRaisesRegex(RuntimeError, '零压降目标'):
+            advanced_units.run_heat_exchanger(HEAT_EXCHANGER, tool)
+
+    def test_vessel_rejects_phase_stream_pressure_mismatch(self):
+        values = dict(VESSEL, pressure_kPa=280)
+        tool = vessel_replay()
+        tool.streams['RAW-FEED']['pressure_Pa'] = 280000
+        for name in ('TWO-PHASE', 'VAPOR', 'LIQUID'):
+            tool.streams[name]['pressure_Pa'] = 180000
+        with self.assertRaisesRegex(RuntimeError, '指定分离压力'):
+            advanced_units.run_vessel(values, tool)
+
     def test_each_workflow_rejects_nonfinite_engine_results(self):
         cases = [
             (advanced_units.run_heat_exchanger, HEAT_EXCHANGER, heat_exchanger_replay,

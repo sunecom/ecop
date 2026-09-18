@@ -114,6 +114,14 @@ def main():
             if abs(results['hot_outlet_temperature_C'] -
                    case['payload']['hot_outlet_temperature_C']) > tolerances['target_temperature_abs_C']:
                 raise AssertionError(f"{case['id']} hot-side target missed")
+            if (abs(results['hot_outlet_pressure_kPa'] - case['payload']['hot_pressure_kPa']) >
+                    tolerances['target_pressure_abs_kPa'] or
+                    abs(results['cold_outlet_pressure_kPa'] - case['payload']['cold_pressure_kPa']) >
+                    tolerances['target_pressure_abs_kPa'] or
+                    max(abs(results['hot_pressure_drop_kPa']),
+                        abs(results['cold_pressure_drop_kPa'])) >
+                    tolerances['target_pressure_abs_kPa']):
+                raise AssertionError(f"{case['id']} heat-exchanger pressure target missed")
         elif module == 'compressor':
             if abs(results['mass_residual_kg_h']) > tolerances['mass_residual_abs_kg_h']:
                 raise AssertionError(f"{case['id']} compressor mass balance failed")
@@ -137,6 +145,10 @@ def main():
             if (results['vapor_product_vapor_fraction'] < 1 - tolerances['phase_fraction_abs'] or
                     results['liquid_product_vapor_fraction'] > tolerances['phase_fraction_abs']):
                 raise AssertionError(f"{case['id']} vessel products are not phase-pure")
+            if (abs(results['separation_pressure_kPa'] - case['payload']['pressure_kPa']) >
+                    tolerances['target_pressure_abs_kPa'] or
+                    results['max_pressure_residual_kPa'] > tolerances['target_pressure_abs_kPa']):
+                raise AssertionError(f"{case['id']} vessel pressure target missed")
         else:
             raise AssertionError(f"Unexpected module: {module}")
         evidence['runs'].append({

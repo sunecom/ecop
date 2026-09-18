@@ -35,6 +35,8 @@ TEMPERATURE_SAMPLE = {'module': 'temperature', 'flow_kg_h': 1000,
 PUMP_SAMPLE = {'module': 'pump', 'flow_kg_h': 1000, 'inlet_temperature_C': 25,
                'inlet_pressure_kPa': 101.325, 'outlet_pressure_kPa': 500,
                'efficiency_percent': 75}
+VESSEL_SAMPLE = {'module': 'vessel', 'flow_kg_h': 1000, 'inlet_temperature_C': 25,
+                 'pressure_kPa': 280, 'feed_vapor_percent': 30}
 
 
 def request(path='/', method='GET', authenticated=True, origin=None, nonce=None, payload=None, host=None,
@@ -107,6 +109,32 @@ class CloudTests(unittest.TestCase):
                                        nonce=cloud_app.server.NONCE, payload=SAMPLE)
             self.assertTrue(status.startswith('502'))
             self.assertEqual(json.loads(body), {'error': '计算未成功，请联系管理员查看服务日志'})
+
+    def test_advanced_pressure_failure_is_controlled_not_saved_and_cleaned_up(self):
+        engine_calls = []
+
+        def fake_call(tool_name, **kwargs):
+            engine_calls.append((tool_name, kwargs))
+            if tool_name == 'dwsim_flowsheet_create':
+                return {'flowsheet_id': 'pressure-fault-flow'}
+            if tool_name == 'dwsim_thermo_list_property_packages':
+                return {'property_packages': ['Steam Tables (IAPWS-IF97)']}
+            if tool_name == 'dwsim_flowsheet_close':
+                return {'closed': True}
+            return {}
+
+        with tempfile.TemporaryDirectory() as run_dir, \
+                patch.object(cloud_app.server, 'RUNS', Path(run_dir)), \
+                patch.object(cloud_app.server, 'call', side_effect=fake_call), \
+                patch.object(cloud_app.server.advanced_units, 'run',
+                             side_effect=RuntimeError('Vessel 压力错配')):
+            status, body = request('/api/calculate', 'POST', origin=cloud_app.ORIGIN,
+                                   nonce=cloud_app.server.NONCE, payload=VESSEL_SAMPLE)
+            self.assertEqual(list(Path(run_dir).glob('*.json')), [])
+        self.assertTrue(status.startswith('502'))
+        self.assertEqual(json.loads(body), {'error': '计算未成功，请联系管理员查看服务日志'})
+        self.assertIn(('dwsim_flowsheet_close', {'flowsheet_id': 'pressure-fault-flow'}),
+                      engine_calls)
 
     def test_catalog_is_read_only_curated_data(self):
         sample = {'ok': True, 'counts': {'mcp_tools': 48, 'unit_operations': 44}}

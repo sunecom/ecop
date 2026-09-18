@@ -13,6 +13,8 @@ DEFINITIONS = {
         'name': '纯水气液分离', 'unit_type': 'Vessel', 'unit_name': 'V-01'},
 }
 
+PRESSURE_TOLERANCE_KPA = 0.02
+
 
 def validate(data, number):
     module = data.get('module')
@@ -111,11 +113,17 @@ def run_heat_exchanger(values, tool):
     heat_balance_relative = abs(heat_balance_residual) / max(abs(hot_release), abs(cold_gain), 1e-12)
     hot_out_temperature = hot_out['temperature_K'] - 273.15
     cold_out_temperature = cold_out['temperature_K'] - 273.15
+    hot_in_pressure = hot_in['pressure_Pa'] / 1000
+    hot_out_pressure = hot_out['pressure_Pa'] / 1000
+    cold_in_pressure = cold_in['pressure_Pa'] / 1000
+    cold_out_pressure = cold_out['pressure_Pa'] / 1000
     results = {
         'hot_outlet_temperature_C': hot_out_temperature,
         'cold_outlet_temperature_C': cold_out_temperature,
-        'hot_outlet_pressure_kPa': hot_out['pressure_Pa'] / 1000,
-        'cold_outlet_pressure_kPa': cold_out['pressure_Pa'] / 1000,
+        'hot_outlet_pressure_kPa': hot_out_pressure,
+        'cold_outlet_pressure_kPa': cold_out_pressure,
+        'hot_pressure_drop_kPa': hot_in_pressure - hot_out_pressure,
+        'cold_pressure_drop_kPa': cold_in_pressure - cold_out_pressure,
         'heat_duty_kW': (hot_release + cold_gain) / 2,
         'hot_side_heat_release_kW': hot_release,
         'cold_side_heat_gain_kW': cold_gain,
@@ -131,6 +139,16 @@ def run_heat_exchanger(values, tool):
         raise RuntimeError('换热器两侧热量衡算未通过')
     if abs(hot_out_temperature - values['hot_outlet_temperature_C']) > 0.02:
         raise RuntimeError('换热器热侧出口温度未达到目标')
+    pressure_errors = (
+        abs(hot_in_pressure - values['hot_pressure_kPa']),
+        abs(hot_out_pressure - values['hot_pressure_kPa']),
+        abs(hot_out_pressure - hot_in_pressure),
+        abs(cold_in_pressure - values['cold_pressure_kPa']),
+        abs(cold_out_pressure - values['cold_pressure_kPa']),
+        abs(cold_out_pressure - cold_in_pressure),
+    )
+    if max(pressure_errors) > PRESSURE_TOLERANCE_KPA:
+        raise RuntimeError('换热器两侧压力未达到声明的零压降目标')
     if cold_out_temperature >= values['hot_inlet_temperature_C'] - 1e-6:
         raise RuntimeError('换热器出口温度发生交叉')
     if any(vapor_fraction(stream) > 1e-6 for stream in streams.values()):
@@ -248,6 +266,16 @@ def run_vessel(values, tool):
             f'{label}_vapor': vapor_fraction(stream),
         })
     require_finite('分离器引擎结果', **finite)
+    target_pressure = values['pressure_kPa']
+    phase_pressures = {
+        'raw_feed': raw_feed['pressure_Pa'] / 1000,
+        'two_phase': two_phase['pressure_Pa'] / 1000,
+        'vapor': vapor['pressure_Pa'] / 1000,
+        'liquid': liquid['pressure_Pa'] / 1000,
+    }
+    pressure_residuals = {
+        name: pressure - target_pressure for name, pressure in phase_pressures.items()
+    }
     feed_flow = two_phase['mass_flow_kg_s']
     feed_vapor = vapor_fraction(two_phase)
     mass_residual = (feed_flow - vapor['mass_flow_kg_s'] - liquid['mass_flow_kg_s']) * 3600
@@ -267,6 +295,10 @@ def run_vessel(values, tool):
         'liquid_product_kg_h': liquid['mass_flow_kg_s'] * 3600,
         'vapor_product_vapor_fraction': vapor_fraction(vapor),
         'liquid_product_vapor_fraction': vapor_fraction(liquid),
+        'two_phase_pressure_kPa': phase_pressures['two_phase'],
+        'vapor_product_pressure_kPa': phase_pressures['vapor'],
+        'liquid_product_pressure_kPa': phase_pressures['liquid'],
+        'max_pressure_residual_kPa': max(abs(value) for value in pressure_residuals.values()),
         'mass_residual_kg_h': mass_residual,
         'vapor_split_residual_kg_h': vapor_split_residual,
         'liquid_split_residual_kg_h': liquid_split_residual,
@@ -284,6 +316,8 @@ def run_vessel(values, tool):
         raise RuntimeError('Vessel 分离前后焓流闭合未通过')
     if abs(feed_vapor - values['feed_vapor_percent'] / 100) > 1e-6:
         raise RuntimeError('Vessel 两相进料汽相比例未达到目标')
+    if results['max_pressure_residual_kPa'] > PRESSURE_TOLERANCE_KPA:
+        raise RuntimeError('Vessel 两相进料或产品压力未达到指定分离压力')
     return {
         'results': results,
         'comparison': {'metric': 'vapor_product_kg_h', 'label': '汽相产品流量',
