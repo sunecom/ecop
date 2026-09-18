@@ -506,10 +506,14 @@ class ProjectStore:
         comparison = result.get('comparison') or {}
         material = result.get('material_system') or {}
         inputs = result.get('inputs') or {}
-        return (module.get('id'), module.get('unit_operation'),
+        composition = material.get('requested_mass_fractions') or inputs.get('composition')
+        composition_signature = (json.dumps(composition, sort_keys=True, separators=(',', ':'))
+                                 if isinstance(composition, dict) else None)
+        return (module.get('id'), module.get('unit_operation'), module.get('unit_tag'),
                 comparison.get('metric'), comparison.get('unit'),
                 result.get('property_package'), material.get('id') or inputs.get('system'),
-                material.get('composition_basis') or inputs.get('composition_basis'))
+                material.get('composition_basis') or inputs.get('composition_basis'),
+                composition_signature)
 
     def compare_records(self, owner_id: str, run_a: str, run_b: str):
         if run_a == run_b:

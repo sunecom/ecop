@@ -93,6 +93,17 @@ def validate(data):
     raise ValueError('不支持的计算模块')
 
 
+def project_inputs(data):
+    values = validate(data)
+    if values['module'] != 'material_flash':
+        return values
+    keys = ('module', 'system', 'flow_kg_h', 'inlet_temperature_C', 'pressure_kPa',
+            'vapor_molar_percent', 'ethanol_mass_percent')
+    replayable = {key: values[key] for key in keys if key in values}
+    replayable['property_package'] = values['property_package_id']
+    return replayable
+
+
 def get_catalog():
     global CATALOG_CACHE, COMPOUND_CACHE
     if CATALOG_CACHE is not None:
@@ -420,6 +431,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, (BASE / 'logo.png').read_bytes(), 'image/png')
         elif parsed.path == '/ecop-logo.jpg':
             self.send(200, (BASE / 'ecop-logo.jpg').read_bytes(), 'image/jpeg')
+        elif parsed.path == '/project_ui.js':
+            self.send(200, (BASE / 'project_ui.js').read_bytes(),
+                      'application/javascript; charset=utf-8')
         elif parsed.path == '/api/status':
             try:
                 tools = rpc('tools/list')['tools']

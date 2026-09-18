@@ -18,8 +18,11 @@ services:
       DWSIM_MODEL_DIR: /models
       DWSIM_BUILD_REFERENCE: "image:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36"
       ECOP_RUNS_DIR: /data/runs
+      ECOP_PROJECTS_DIR: /projects
     secrets: [ecop_password, mcp_token]
-    volumes: [runs:/data]
+    volumes:
+      - runs:/data
+      - projects:/projects
     networks: [edge, engine]
     depends_on: [dwsim]
     read_only: true
@@ -54,6 +57,7 @@ services:
     secrets: [mcp_token]
     volumes:
       - ./models:/models:ro
+      - projects:/projects
     networks: [engine]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -68,6 +72,7 @@ networks:
     internal: true
 volumes:
   runs:
+  projects:
 secrets:
   ecop_password:
     file: ./secrets/ecop_password.txt

@@ -171,6 +171,23 @@ class ProjectStoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.create_case(self.owner, project['id'], '工况', {'value': float('nan')})
 
+    def test_browser_contract_has_persistent_workspace_without_path_upload(self):
+        page = (ROOT / '本地演示' / 'index.html').read_text(encoding='utf-8')
+        script_path = ROOT / '本地演示' / 'project_ui.js'
+        self.assertIn('id="projects"', page)
+        self.assertIn('id="projectCreate"', page)
+        self.assertIn('DWSIM 流程文件', page)
+        self.assertNotIn('type="file"', page)
+        self.assertTrue(script_path.is_file())
+        script = script_path.read_text(encoding='utf-8')
+        self.assertIn('/api/projects', script)
+        self.assertIn('/calculate', script)
+        self.assertIn('/api/exports/', script)
+        self.assertNotIn('server_path', script)
+        compose = (ROOT / 'deploy' / 'compose.yaml').read_text(encoding='utf-8')
+        self.assertIn('ECOP_PROJECTS_DIR: /projects', compose)
+        self.assertGreaterEqual(compose.count('projects:/projects'), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

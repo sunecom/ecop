@@ -122,6 +122,16 @@ class MaterialSystemTests(unittest.TestCase):
         self.assertEqual(values['composition'], {'Water': 0.5, 'Ethanol': 0.5})
         self.assertAlmostEqual(sum(values['composition'].values()), 1)
 
+    def test_project_snapshot_remains_replayable_without_derived_fields(self):
+        snapshot = server.project_inputs(BINARY)
+        self.assertEqual(snapshot['system'], 'water_ethanol')
+        self.assertEqual(snapshot['property_package'], 'nrtl')
+        self.assertNotIn('composition', snapshot)
+        self.assertNotIn('compounds', snapshot)
+        replayed = server.validate(snapshot)
+        self.assertEqual(replayed['composition'], {'Water': 0.5, 'Ethanol': 0.5})
+        self.assertEqual(replayed['property_package'], 'NRTL')
+
     def test_compatibility_matrix_rejects_unsupported_selection(self):
         invalid = [
             dict(BINARY, system='industrial_wastewater'),

@@ -4,9 +4,9 @@ AiToMoney 为客户 ECOP 提供的 DWSIM 工艺计算技术验证。域名 `ecop
 
 ## 部署边界
 
-本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。正式站已接入目标汽化、出口温度加热/冷却、泵升压、两股混合、按比例分流、阀门节流、纯水双侧单液相换热、纯水蒸汽压缩和真实两相进料气液分离九类工作流。此版本无多租户、任务队列、持久化账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
+本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。平台已接入九类纯水设备工作流和一类受控物系闪蒸工作流。P3 候选增加项目、工况版本、不可变计算记录与 DWSIM 流程文件导出；仍无任务队列或正式多租户账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
 
-所有页面及业务 API 使用 Basic Auth；应用内仅 `/healthz` 返回无敏感内容的存活状态，生产 Nginx 可选择不公开该路径。计算 POST 另验证同源 Origin 和页面 nonce。只读 `/api/catalog` 仅执行固定的工具清单、设备类型、物性包和组分目录查询并缓存结果；`/api/compounds?q=` 只在缓存目录中返回前 20 个匹配名称。两者均不接受任意 MCP 工具名或参数。MCP token 不传至浏览器，MCP 不映射宿主端口、无公网路由。Web 同时接入普通 `edge` 网络和隔离的 `engine` 网络，宿主端口仅监听 `127.0.0.1:18765`；DWSIM 只接入 `engine`。两个容器将 `HOME` 指向可写的 `/tmp`；DWSIM 以 UID/GID 10001 读取只读 secret，并在 token 为空时拒绝启动。所有登录账户共享同一演示空间。
+所有页面及业务 API 使用 Basic Auth；应用内仅 `/healthz` 返回无敏感内容的存活状态，生产 Nginx 可选择不公开该路径。所有写入 API 另验证同源 Origin 和页面 nonce。只读 `/api/catalog` 仅执行固定的工具清单、设备类型、物性包和组分目录查询并缓存结果；`/api/compounds?q=` 只在缓存目录中返回前 20 个匹配名称。两者均不接受任意 MCP 工具名或参数。MCP token 不传至浏览器，MCP 不映射宿主端口、无公网路由。Web 同时接入普通 `edge` 网络和隔离的 `engine` 网络，宿主端口仅监听 `127.0.0.1:18765`；DWSIM 只接入 `engine`。两个容器将 `HOME` 指向可写的 `/tmp`；DWSIM 以 UID/GID 10001 读取只读 secret，并在 token 为空时拒绝启动。当前部署只配置一个 Basic Auth 用户；服务端仍将认证用户名映射为不透明稳定主体 ID，浏览器不能指定主体。
 
 ## 固定引擎
 
@@ -32,7 +32,7 @@ amd64 manifest digest 为 `sha256:f194c706c6bde5d290768703b5f402de66e37a31c589a8
 
 健康检查 `/healthz` 只证明 Web 存活；通过认证的 `/api/status` 才验证 MCP。首次引擎初始化可能暂时返回503，刷新后再试。
 
-停止仅本项目：`docker compose --env-file deploy/.env -f deploy/compose.yaml stop`。更新前备份 `ecop_runs` volume 和部署配置，保留旧发布目录和镜像以便回滚。不要执行 `down -v`，否则会删除运行记录。运行记录位于独立 volume，无公开读取端点；需按业务留存期限清理和备份。
+停止仅本项目：`docker compose --env-file deploy/.env -f deploy/compose.yaml stop`。更新前同时备份 `ecop_runs` 与 `ecop_projects` volume、部署配置和镜像，保留旧发布目录和镜像以便回滚。不要执行 `down -v`，否则会删除运行记录、SQLite 项目索引和 DWSIM 导出文件。旧 JSON 运行记录位于 `runs` volume；项目数据库与导出文件位于独立 `projects` volume。数据库使用 SQLite WAL，备份应在 Web 运行时通过 SQLite backup API，或停止 Web 后一致归档整个 volume；恢复后必须执行完整性检查并抽查导出 SHA-256。
 
 ## 验证
 
@@ -46,7 +46,9 @@ P1A 候选必须在独立 DWSIM 引擎和独立数据卷上验证。`deploy/run_
 
 P1B 候选沿用同样的隔离原则：`deploy/probe_p1b_schema.py` 只接受 `http://127.0.0.1:15903/mcp`，`deploy/run_p1b_qa.py` 和 `deploy/browser_p1b_qa.py` 只接受 `http://127.0.0.1:18767`。API 验收覆盖换热器、压缩机、Vessel 各一组基准和扰动工况、液相压缩拒绝、边界输入拒绝及认证/同源/nonce；浏览器验收覆盖九个真实表单、三类新增设备求解、历史比较、下载及 1440px/390px 无横向溢出。
 
-P2 候选继续使用独立资源：`deploy/probe_p2_schema.py` 只接受 `http://127.0.0.1:15904/mcp`，`deploy/run_p2_qa.py` 和 `deploy/browser_p2_qa.py` 只接受 `http://127.0.0.1:18768`。DWSIM 服务必须把 `deploy/models` 只读挂载到 `/models`；7 个受控模板固定 PT 闪蒸内外循环 `1e-8` 设置，应用在运行前从 XML 回读精确组分、物性包、空白流程和设置。P2 验收覆盖全部允许的 7 个物系/物性包组合、扰动工况、150 kPa 总控复核工况、逐组分 `1e-6` 相对质量/摩尔闭合、失败与安全用例、原九工作流回归以及 1440px/390px 真浏览器。汽相目标明确为摩尔相率；Raoult 对水–乙醇仅作理想溶液对照，守恒与收敛不等同物性准确性。P2 尚未部署生产。
+P2 使用独立资源完成候选验收后已按 R03 发布并通过总控正式站复核。DWSIM 服务必须把 `deploy/models` 只读挂载到 `/models`；7 个受控模板固定 PT 闪蒸内外循环 `1e-8` 设置，应用在运行前从 XML 回读精确组分、物性包、空白流程和设置。汽相目标明确为摩尔相率；Raoult 对水–乙醇仅作理想溶液对照，守恒与收敛不等同物性准确性。
+
+P3 候选必须使用独立 Web/DWSIM、独立 `runs` volume 和独立 `projects` volume。Web 与 DWSIM 以 UID 10001 将同一项目卷挂载到 `/projects`；只有 Web 生成的 `exp_` ID 能映射到固定 `.dwxml` 路径，浏览器不能传入服务器路径。项目计算在 flowsheet 关闭前保存模型，Web 再校验普通文件、后缀、大小和 SHA-256 后登记不可变映射。JSON 下载只是计算记录，不得称为 DWSIM 流程导出。P3 候选通过总控复核前不得部署生产。
 
 ## 已知限制与后续
 

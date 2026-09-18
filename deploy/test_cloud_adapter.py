@@ -65,7 +65,7 @@ def request(path='/', method='GET', authenticated=True, origin=None, nonce=None,
 class CloudTests(unittest.TestCase):
     def test_auth_all_business_routes(self):
         for path in ['/', '/logo.png', '/ecop-logo.jpg', '/api/status', '/api/catalog', '/api/compounds',
-                     '/api/calculate', '/api/projects']:
+                     '/project_ui.js', '/api/calculate', '/api/projects']:
             self.assertTrue(request(path, authenticated=False)[0].startswith('401'))
 
     def test_health_and_page(self):

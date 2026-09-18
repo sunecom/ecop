@@ -77,6 +77,9 @@ def application(environ, start_response):
         return respond('200 OK', (server.BASE / 'logo.png').read_bytes(), 'image/png')
     if method == 'GET' and path == '/ecop-logo.jpg':
         return respond('200 OK', (server.BASE / 'ecop-logo.jpg').read_bytes(), 'image/jpeg')
+    if method == 'GET' and path == '/project_ui.js':
+        return respond('200 OK', (server.BASE / 'project_ui.js').read_bytes(),
+                       'application/javascript; charset=utf-8')
     if method == 'GET' and path == '/api/status':
         try:
             tools = server.rpc('tools/list')['tools']
@@ -150,7 +153,7 @@ def application(environ, start_response):
             payload = read_json_body(environ)
             if set(payload) != {'name', 'inputs'}:
                 raise ValueError('工况请求字段不正确')
-            inputs = server.validate(payload['inputs'])
+            inputs = server.project_inputs(payload['inputs'])
             case = PROJECT_STORE.create_case(
                 OWNER_ID, case_match.group(1), payload['name'], inputs)
             return respond('201 Created', {'ok': True, 'case': case})
@@ -165,7 +168,7 @@ def application(environ, start_response):
             payload = read_json_body(environ)
             if not {'inputs'} <= set(payload) or set(payload) - {'inputs', 'parent_version_id'}:
                 raise ValueError('版本请求字段不正确')
-            inputs = server.validate(payload['inputs'])
+            inputs = server.project_inputs(payload['inputs'])
             version = PROJECT_STORE.create_version(
                 OWNER_ID, version_match.group(1), inputs,
                 parent_version_id=payload.get('parent_version_id'))
