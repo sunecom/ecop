@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 import json, math, threading, time, uuid, secrets, os
-import basic_units, catalog
+import advanced_units, basic_units, catalog
 
 BASE = Path(__file__).resolve().parent
 PORT = 18765
@@ -83,6 +83,9 @@ def validate(data):
     basic_values = basic_units.validate(data, number)
     if basic_values is not None:
         return basic_values
+    advanced_values = advanced_units.validate(data, number)
+    if advanced_values is not None:
+        return advanced_values
     raise ValueError('不支持的计算模块')
 
 
@@ -121,7 +124,7 @@ def get_catalog():
                 'unit_operations': len(unit_types),
                 'property_packages': len(packages),
                 'compounds': compounds.get('count', len(COMPOUND_CACHE)),
-                'live_workflows': 6,
+                'live_workflows': 9,
             },
             'tool_groups': tool_groups,
             'mcp_tools': tool_records,
@@ -192,8 +195,9 @@ def calculate(data):
     try:
         started = time.monotonic()
         module = values['module']
-        if module in basic_units.DEFINITIONS:
-            definition = basic_units.DEFINITIONS[module]
+        special_definitions = {**basic_units.DEFINITIONS, **advanced_units.DEFINITIONS}
+        if module in special_definitions:
+            definition = special_definitions[module]
             module_name = definition['name']
             unit_type = definition['unit_type']
             unit_name = definition['unit_name']
@@ -219,8 +223,9 @@ def calculate(data):
         property_package = next(name for name in packages if 'Steam' in name)
         tool('dwsim_thermo_set_property_package', name=property_package)
 
-        if module in basic_units.DEFINITIONS:
-            workflow = basic_units.run(values, tool)
+        if module in special_definitions:
+            workflow = (basic_units.run(values, tool) if module in basic_units.DEFINITIONS
+                        else advanced_units.run(values, tool))
             result = {
                 'run_id': uuid.uuid4().hex,
                 'time': time.strftime('%Y-%m-%d %H:%M:%S'),

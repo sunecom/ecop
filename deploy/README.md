@@ -4,7 +4,7 @@ AiToMoney 为客户 ECOP 提供的 DWSIM 工艺计算技术验证。域名 `ecop
 
 ## 部署边界
 
-本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。已接入目标汽化、出口温度加热/冷却、泵升压、两股混合、按比例分流和阀门节流六类纯水工作流。此版本无多租户、任务队列、持久化账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
+本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。正式站已接入目标汽化、出口温度加热/冷却、泵升压、两股混合、按比例分流和阀门节流六类纯水工作流。P1B 隔离候选另实现纯水双侧单液相换热、纯水蒸汽压缩和真实两相进料气液分离，未获总控放行前不得部署。此版本无多租户、任务队列、持久化账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
 
 所有页面及业务 API 使用 Basic Auth；应用内仅 `/healthz` 返回无敏感内容的存活状态，生产 Nginx 可选择不公开该路径。计算 POST 另验证同源 Origin 和页面 nonce。只读 `/api/catalog` 仅执行固定的工具清单、设备类型、物性包和组分目录查询并缓存结果；`/api/compounds?q=` 只在缓存目录中返回前 20 个匹配名称。两者均不接受任意 MCP 工具名或参数。MCP token 不传至浏览器，MCP 不映射宿主端口、无公网路由。Web 同时接入普通 `edge` 网络和隔离的 `engine` 网络，宿主端口仅监听 `127.0.0.1:18765`；DWSIM 只接入 `engine`。两个容器将 `HOME` 指向可写的 `/tmp`；DWSIM 以 UID/GID 10001 读取只读 secret，并在 token 为空时拒绝启动。所有登录账户共享同一演示空间。
 
@@ -43,6 +43,8 @@ amd64 manifest digest 为 `sha256:f194c706c6bde5d290768703b5f402de66e37a31c589a8
 在目标服务器执行 `python3 deploy/smoke_test.py` 验证回环入口；再执行 `python3 deploy/smoke_test.py --base https://ecop.aitomoney.online` 验证正式 HTTPS 入口。两次均使用相同的认证、同源、nonce、非法输入和真实计算断言，脚本不会打印密码或认证头。
 
 P1A 候选必须在独立 DWSIM 引擎和独立数据卷上验证。`deploy/run_p1a_qa.py` 强制只连接 `http://127.0.0.1:18766`，运行 Mixer、Splitter、Valve 各一组基准和扰动工况，并检查拒绝用例、Origin、nonce 和未认证访问。`deploy/browser_p1a_qa.py` 需外部 Playwright 验收环境，使用真实 Chrome 记录 1440px/390px 页面、三设备求解、同模块比较、下载和控制台错误。
+
+P1B 候选沿用同样的隔离原则：`deploy/probe_p1b_schema.py` 只接受 `http://127.0.0.1:15903/mcp`，`deploy/run_p1b_qa.py` 和 `deploy/browser_p1b_qa.py` 只接受 `http://127.0.0.1:18767`。API 验收覆盖换热器、压缩机、Vessel 各一组基准和扰动工况、液相压缩拒绝、边界输入拒绝及认证/同源/nonce；浏览器验收覆盖九个真实表单、三类新增设备求解、历史比较、下载及 1440px/390px 无横向溢出。
 
 ## 已知限制与后续
 

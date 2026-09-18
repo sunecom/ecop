@@ -66,7 +66,7 @@ class CloudTests(unittest.TestCase):
         self.assertTrue(status.startswith('200'))
         self.assertIn('云端受控验证'.encode(), body)
         self.assertIn(b'/ecop-logo.jpg', body)
-        for module in [b'mixer', b'splitter', b'valve']:
+        for module in [b'mixer', b'splitter', b'valve', b'heat_exchanger', b'compressor', b'vessel']:
             self.assertIn(b'data-module="' + module + b'"', body)
         self.assertNotIn(b'__NONCE__', body)
         logo_status, logo = request('/ecop-logo.jpg')

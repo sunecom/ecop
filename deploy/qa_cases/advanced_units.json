@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "stage": "P1B",
+  "engine": "DWSIM 10.2.8",
+  "property_package": "Steam Tables (IAPWS-IF97)",
+  "tolerances": {
+    "mass_residual_abs_kg_h": 0.000001,
+    "energy_residual_relative": 0.0001,
+    "target_temperature_abs_C": 0.02,
+    "target_pressure_abs_kPa": 0.02,
+    "phase_fraction_abs": 0.000001
+  },
+  "cases": [
+    {
+      "id": "HX-BASE",
+      "payload": {"module": "heat_exchanger", "hot_flow_kg_h": 1000, "hot_inlet_temperature_C": 80, "hot_pressure_kPa": 300, "cold_flow_kg_h": 1200, "cold_inlet_temperature_C": 20, "cold_pressure_kPa": 300, "hot_outlet_temperature_C": 50},
+      "comparison_metric": "heat_duty_kW"
+    },
+    {
+      "id": "HX-DISTURB",
+      "payload": {"module": "heat_exchanger", "hot_flow_kg_h": 1500, "hot_inlet_temperature_C": 90, "hot_pressure_kPa": 500, "cold_flow_kg_h": 900, "cold_inlet_temperature_C": 15, "cold_pressure_kPa": 400, "hot_outlet_temperature_C": 60},
+      "comparison_metric": "heat_duty_kW"
+    },
+    {
+      "id": "COMPRESSOR-BASE",
+      "payload": {"module": "compressor", "flow_kg_h": 1000, "inlet_temperature_C": 200, "inlet_pressure_kPa": 200, "outlet_pressure_kPa": 500, "efficiency_percent": 75},
+      "comparison_metric": "power_required_kW"
+    },
+    {
+      "id": "COMPRESSOR-DISTURB",
+      "payload": {"module": "compressor", "flow_kg_h": 800, "inlet_temperature_C": 250, "inlet_pressure_kPa": 300, "outlet_pressure_kPa": 900, "efficiency_percent": 82},
+      "comparison_metric": "power_required_kW"
+    },
+    {
+      "id": "VESSEL-BASE",
+      "payload": {"module": "vessel", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 200, "feed_vapor_percent": 30},
+      "comparison_metric": "vapor_product_kg_h"
+    },
+    {
+      "id": "VESSEL-DISTURB",
+      "payload": {"module": "vessel", "flow_kg_h": 1600, "inlet_temperature_C": 40, "pressure_kPa": 350, "feed_vapor_percent": 65},
+      "comparison_metric": "vapor_product_kg_h"
+    }
+  ],
+  "negative_cases": [
+    {"id": "HX-MISSING", "expected_status": 400, "payload": {"module": "heat_exchanger"}},
+    {"id": "HX-TEMPERATURE-ORDER", "expected_status": 400, "payload": {"module": "heat_exchanger", "hot_flow_kg_h": 1000, "hot_inlet_temperature_C": 40, "hot_pressure_kPa": 300, "cold_flow_kg_h": 1000, "cold_inlet_temperature_C": 38, "cold_pressure_kPa": 300, "hot_outlet_temperature_C": 39}},
+    {"id": "COMPRESSOR-LIQUID", "expected_status": 400, "payload": {"module": "compressor", "flow_kg_h": 1000, "inlet_temperature_C": 100, "inlet_pressure_kPa": 1000, "outlet_pressure_kPa": 1500, "efficiency_percent": 75}},
+    {"id": "COMPRESSOR-NO-RISE", "expected_status": 400, "payload": {"module": "compressor", "flow_kg_h": 1000, "inlet_temperature_C": 200, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 510, "efficiency_percent": 75}},
+    {"id": "VESSEL-NO-VAPOR", "expected_status": 400, "payload": {"module": "vessel", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 200, "feed_vapor_percent": 0}},
+    {"id": "NON-FINITE", "expected_status": 400, "payload": {"module": "vessel", "flow_kg_h": "NaN", "inlet_temperature_C": 25, "pressure_kPa": 200, "feed_vapor_percent": 30}}
+  ]
+}

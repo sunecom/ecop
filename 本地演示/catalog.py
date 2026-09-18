@@ -246,6 +246,30 @@ def build_unit_groups(available_types):
             'route': '#workbench',
             'workspace_mode': 'valve',
         },
+        'HeatExchanger': {
+            'summary': '已接入两股单液相纯水换热，指定热侧出口并校核两侧热平衡。',
+            'inputs': ['冷热侧纯水流量、温度与压力', '热侧目标出口温度'],
+            'outputs': ['冷热侧出口状态', '换热负荷、两侧质量与热平衡残差'],
+            'scenarios': ['纯水冷热物流热量回收'],
+            'route': '#workbench',
+            'workspace_mode': 'heat_exchanger',
+        },
+        'Compressor': {
+            'summary': '已接入纯水蒸汽压缩，液相入口拒绝并校核压缩功与焓升。',
+            'inputs': ['纯水蒸汽流量与入口状态', '目标出口压力', '绝热效率'],
+            'outputs': ['压缩功率', '出口温压、压力比与功率残差'],
+            'scenarios': ['纯水蒸汽升压'],
+            'route': '#workbench',
+            'workspace_mode': 'compressor',
+        },
+        'Vessel': {
+            'summary': '已接入受控两相纯水进料的真实 Vessel 气液分离。',
+            'inputs': ['纯水流量、预热前温度与分离压力', '两相进料汽相比例'],
+            'outputs': ['汽液产品流量与相态', '质量、分配与焓流闭合'],
+            'scenarios': ['纯水闪蒸后气液分离'],
+            'route': '#workbench',
+            'workspace_mode': 'vessel',
+        },
     }
     groups = []
     for group in UNIT_GROUPS:
