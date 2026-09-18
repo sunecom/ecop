@@ -3,4 +3,5 @@
 *.yaml text eol=lf
 *.example text eol=lf
 Dockerfile text eol=lf
+docs/releases/** text eol=lf
 *.png binary

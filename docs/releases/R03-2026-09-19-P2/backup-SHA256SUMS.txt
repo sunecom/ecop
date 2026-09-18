@@ -1,0 +1,14 @@
+28baffd4b5a8c949c1b9670a879c0d50cfc6d7a771a5ab1e7d13ceabc7289f4b  /opt/ecop/.rollback/r03-20260918T170051Z/dwsim-image.tar
+c21dc4aacb581c230f1515c9eff520fa563c51642f2cec530ac6df3c7e88c961  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-deployment-tree.tgz
+271cbc02a367e13b09b835c45ee612d2d9b9919232f33e5e9b0bff69a689f56a  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-dwsim-container.json
+7c3cd67413d86bcab0c14a74c248eb416db3d5d3c372921ccf9d807ec6f67a11  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-dwsim-image.json
+8726b4dd84604dd8bc94daa2584afa523e474b53cbfadc79b0923cf91b8d9538  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-runs-volume.tgz
+5879899f8ddd1afd704dbe669fa9a63427f5048268172b98edc48c553a6d2231  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-web-container.json
+5d47b3d7e1a989952f7674060b848add1166c0f187ff4ef1462f94c408f35b23  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-web-image.json
+64ed4bd9f8d85ecacbd08af623b2fc42adff9e52bf8064526dc407f9080994e5  /opt/ecop/.rollback/r03-20260918T170051Z/ecop-web-image.tar.gz
+888d7ecf6e54a0c52b9e63e9001da5923cff436356605469583f6f98e74dda6f  /opt/ecop/.rollback/r03-20260918T170051Z/manifest.txt
+e8d70d370f93325fdd01a7de38041be4fdf9fe89a65c2af9c30fb6851a4f2ba3  /opt/ecop/.rollback/r03-20260918T170051Z/production-loopback-minimal-smoke.json
+
+# 本文件在生产主机的对应 SHA256SUMS 文件 SHA-256：
+# e2647bbe2e7b85a35f841478c03c8ca358706f62d85baaa0c56d0cc5f8b424ea
+
