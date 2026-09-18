@@ -23,6 +23,8 @@ PROBED_TOOLS = (
     'dwsim_thermo_add_compounds',
     'dwsim_thermo_list_property_packages',
     'dwsim_thermo_set_property_package',
+    'dwsim_flowsheet_load',
+    'dwsim_flowsheet_get_xml',
     'dwsim_stream_add_material',
     'dwsim_stream_set_conditions',
     'dwsim_stream_get_results',
@@ -51,6 +53,9 @@ CASES = [
     {'module': 'material_flash', 'system': 'water_ethanol', 'property_package': 'raoult',
      'flow_kg_h': 1000, 'inlet_temperature_C': 25, 'pressure_kPa': 101.325,
      'vapor_molar_percent': 50, 'ethanol_mass_percent': 50},
+    {'module': 'material_flash', 'system': 'water_ethanol', 'property_package': 'nrtl',
+     'flow_kg_h': 800, 'inlet_temperature_C': 30, 'pressure_kPa': 150,
+     'vapor_molar_percent': 40, 'ethanol_mass_percent': 40},
 ]
 
 
@@ -60,6 +65,7 @@ def parse_args():
     token = parser.add_mutually_exclusive_group(required=True)
     token.add_argument('--token-file')
     token.add_argument('--token-env')
+    parser.add_argument('--model-dir', default='/models')
     parser.add_argument('--output', required=True)
     return parser.parse_args()
 
@@ -104,10 +110,11 @@ def number(data, name, label, low, high):
     return float(value)
 
 
-def run_case(client, payload):
+def run_case(client, payload, model_dir):
     values = material_systems.validate(payload, number)
-    flowsheet_id = client.call('dwsim_flowsheet_create', name='P2 direct schema probe')[
-        'flowsheet_id']
+    flowsheet_id = client.call(
+        'dwsim_flowsheet_load',
+        filepath=material_systems.template_path(values, model_dir))['flowsheet_id']
     try:
         def tool(tool_name, **arguments):
             return client.call(tool_name, flowsheet_id=flowsheet_id, **arguments)
@@ -146,7 +153,7 @@ def main():
     expected_packages = {'Steam Tables (IAPWS-IF97)', 'NRTL', "Raoult's Law"}
     if not expected_packages.issubset(packages):
         raise AssertionError('Controlled property packages missing from engine inventory')
-    runs = [run_case(client, payload) for payload in CASES]
+    runs = [run_case(client, payload, args.model_dir) for payload in CASES]
     evidence = {
         'schema_version': '1.0',
         'stage': 'P2-isolated-schema-probe',
@@ -164,7 +171,8 @@ def main():
             'value': 'molar',
             'evidence': ('DWSIM phase Properties.molarfraction is returned as phase fraction; '
                          'component mass flows are independently reconstructed from molar flow, '
-                         'phase mole fractions, and derived molecular weights.'),
+                         'phase mole fractions, and derived molecular weights. Each component is '
+                         'checked against its own feed flow at 1e-6 relative tolerance.'),
             'source': ('https://github.com/DanWBR/dwsim/blob/windows/'
                        'DWSIM.Thermodynamics/PropertyPackages/GraysonStreed.vb'),
         },

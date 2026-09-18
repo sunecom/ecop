@@ -29,6 +29,9 @@ BINARY = {
     'vapor_molar_percent': 50,
     'ethanol_mass_percent': 50,
 }
+BINARY_TEMPLATE_XML = (
+    ROOT / 'deploy' / 'models' / 'material_water_ethanol_nrtl.dwxml'
+).read_text(encoding='utf-8')
 
 
 def stream(flow_kg_h=1000, temperature_C=86.1343113612, pressure_kPa=101.325,
@@ -43,9 +46,9 @@ def stream(flow_kg_h=1000, temperature_C=86.1343113612, pressure_kPa=101.325,
     liquid_mole = liquid_mole or {
         'Water': 0.8902519839717437, 'Ethanol': 0.10974801602825637}
     vapor_composition = vapor_composition or {
-        'Water': 0.32120028377758586, 'Ethanol': 0.6787997162224142}
+        'Water': 0.321188714028371, 'Ethanol': 0.678811285971629}
     vapor_mole = vapor_mole or {
-        'Water': 0.5475178082276573, 'Ethanol': 0.4524821917723428}
+        'Water': 0.5475046616918269, 'Ethanol': 0.4524953383081731}
 
     def compounds(mass, mole):
         return {name: {'mass_fraction': mass[name], 'mole_fraction': mole[name]}
@@ -79,6 +82,11 @@ class ReplayTool:
 
     def __call__(self, tool_name, **kwargs):
         self.calls.append((tool_name, kwargs))
+        if tool_name == 'dwsim_flowsheet_get_xml':
+            xml = BINARY_TEMPLATE_XML.replace(
+                '<ComponentName>NRTL</ComponentName>',
+                f'<ComponentName>{self.package}</ComponentName>')
+            return {'xml': xml}
         if tool_name == 'dwsim_thermo_add_compounds':
             return {'added': self.compounds}
         if tool_name == 'dwsim_thermo_set_property_package':
@@ -134,7 +142,7 @@ class MaterialSystemTests(unittest.TestCase):
         self.assertAlmostEqual(
             workflow['results']['max_overall_component_mass_residual_kg_h'], 0)
         self.assertLess(
-            workflow['results']['max_phase_component_mass_residual_kg_h'], 0.02)
+            workflow['results']['max_phase_component_mass_relative_residual'], 1e-6)
         self.assertEqual(workflow['material_system']['phase_fraction_basis'], 'molar')
         self.assertEqual(workflow['raw']['property_package_applied']['property_package'], 'NRTL')
         self.assertEqual(workflow['material_system']['feed_mass_fractions'],
@@ -144,6 +152,22 @@ class MaterialSystemTests(unittest.TestCase):
         values = server.validate(BINARY)
         with self.assertRaisesRegex(RuntimeError, '物性包设置后回读不一致'):
             material_systems.run(values, ReplayTool(package="Raoult's Law"))
+
+    def test_flash_tolerance_template_mismatch_is_rejected(self):
+        values = server.validate(BINARY)
+        tool = ReplayTool()
+        original = tool.__call__
+
+        def tampered(tool_name, **kwargs):
+            result = original(tool_name, **kwargs)
+            if tool_name == 'dwsim_flowsheet_get_xml':
+                result['xml'] = result['xml'].replace(
+                    'PTFlash_External_Loop_Tolerance" Value="1E-08',
+                    'PTFlash_External_Loop_Tolerance" Value="0.0001')
+            return result
+
+        with self.assertRaisesRegex(RuntimeError, '闪蒸精度设置不一致'):
+            material_systems.run(values, tampered)
 
     def test_composition_and_flow_readback_mismatch_are_rejected(self):
         values = server.validate(BINARY)
@@ -183,7 +207,7 @@ class MaterialSystemTests(unittest.TestCase):
 
         def fake_call(tool_name, **kwargs):
             calls.append((tool_name, kwargs))
-            if tool_name == 'dwsim_flowsheet_create':
+            if tool_name == 'dwsim_flowsheet_load':
                 return {'flowsheet_id': 'p2-fault-flow'}
             if tool_name == 'dwsim_thermo_list_property_packages':
                 return {'property_packages': ['NRTL']}

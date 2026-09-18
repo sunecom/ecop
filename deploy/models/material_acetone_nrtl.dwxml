@@ -1,0 +1,650 @@
+<?xml version='1.0' encoding='utf-8'?>
+<DWSIM_Simulation_Data>
+  <GeneralInfo>
+    <SavedOn>2026-09-18T16:32:44.0693689+00:00</SavedOn>
+    <SavedFromClassicUI>false</SavedFromClassicUI>
+  </GeneralInfo>
+  <SimulationObjects />
+  <Settings>
+    <Type>DWSIM.SharedClasses.DWSIM.Flowsheet.FlowsheetVariables</Type>
+    <SimulationMode />
+    <BackupFileName />
+    <FilePath />
+    <FlowsheetQuickConnect>false</FlowsheetQuickConnect>
+    <FlowsheetShowCalculationQueue>false</FlowsheetShowCalculationQueue>
+    <FlowsheetShowConsoleWindow>false</FlowsheetShowConsoleWindow>
+    <FlowsheetShowCOReportsWindow>false</FlowsheetShowCOReportsWindow>
+    <FlowsheetShowWatchWindow>false</FlowsheetShowWatchWindow>
+    <FlowsheetMultiSelectMode>false</FlowsheetMultiSelectMode>
+    <FlowsheetSnapToGrid>false</FlowsheetSnapToGrid>
+    <FlowsheetDisplayGrid>false</FlowsheetDisplayGrid>
+    <FractionNumberFormat>G8</FractionNumberFormat>
+    <Key />
+    <NumberFormat>G6</NumberFormat>
+    <Password />
+    <SimulationAuthor />
+    <SimulationComments />
+    <SimulationName>ECOP P2 template acetone nrtl</SimulationName>
+    <UsePassword>false</UsePassword>
+    <SelectedUnitSystem1>
+      <Type>DWSIM.SharedClasses.SystemsOfUnits.SI_ENG</Type>
+      <accel>m2/s</accel>
+      <activity>Pa</activity>
+      <activityCoefficient>-</activityCoefficient>
+      <area>m2</area>
+      <cakeresistance>m/kg</cakeresistance>
+      <cinematic_viscosity>cSt</cinematic_viscosity>
+      <compressibility>1/Pa</compressibility>
+      <compressibilityfactor>-</compressibilityfactor>
+      <deltaP>bar</deltaP>
+      <deltaT>C.</deltaT>
+      <density>kg/m3</density>
+      <diameter>mm</diameter>
+      <distance>m</distance>
+      <enthalpy>kJ/kg</enthalpy>
+      <entropy>kJ/[kg.K]</entropy>
+      <excessEnthalpy>kJ/kg</excessEnthalpy>
+      <excessEntropy>kJ/[kg.K]</excessEntropy>
+      <force>N</force>
+      <foulingfactor>K.m2/W</foulingfactor>
+      <fugacity>Pa</fugacity>
+      <fugacityCoefficient>-</fugacityCoefficient>
+      <gor>m3/m3</gor>
+      <head>m</head>
+      <heat_transf_coeff>W/[m2.K]</heat_transf_coeff>
+      <heatCapacityCp>kJ/[kg.K]</heatCapacityCp>
+      <heatCapacityCv>kJ/[kg.K]</heatCapacityCv>
+      <heatflow>kW</heatflow>
+      <heat>kJ</heat>
+      <idealGasHeatCapacity>kJ/[kg.K]</idealGasHeatCapacity>
+      <jouleThomsonCoefficient>K/Pa</jouleThomsonCoefficient>
+      <kvalue>-</kvalue>
+      <logfugacityCoefficient>-</logfugacityCoefficient>
+      <logKvalue>-</logKvalue>
+      <mass>kg</mass>
+      <mass_conc>kg/m3</mass_conc>
+      <massflow>kg/h</massflow>
+      <massfraction>-</massfraction>
+      <mediumresistance>m-1</mediumresistance>
+      <molar_conc>mol/m3</molar_conc>
+      <molar_enthalpy>kJ/kmol</molar_enthalpy>
+      <molar_entropy>kJ/[kmol.K]</molar_entropy>
+      <molar_volume>m3/kmol</molar_volume>
+      <molarflow>kmol/h</molarflow>
+      <molarfraction>-</molarfraction>
+      <molecularWeight>kg/kmol</molecularWeight>
+      <Name>SI (Engineering)</Name>
+      <pdp_boilingPointTemperature>C</pdp_boilingPointTemperature>
+      <pdp_meltingTemperature>C</pdp_meltingTemperature>
+      <pressure>bar</pressure>
+      <reac_rate>mol/[m3.s]</reac_rate>
+      <reac_rate_heterog>mol/[kg.s]</reac_rate_heterog>
+      <spec_vol>m3/kg</spec_vol>
+      <speedOfSound>m/s</speedOfSound>
+      <surfaceTension>N/m</surfaceTension>
+      <temperature>C</temperature>
+      <thermalConductivity>W/[m.K]</thermalConductivity>
+      <thermalConductivityOfLiquid>W/[m.K]</thermalConductivityOfLiquid>
+      <thermalConductivityOfVapor>W/[m.K]</thermalConductivityOfVapor>
+      <thickness>mm</thickness>
+      <time>s</time>
+      <vaporPressure>bar</vaporPressure>
+      <velocity>m/s</velocity>
+      <viscosity>cP</viscosity>
+      <viscosityOfLiquid>cP</viscosityOfLiquid>
+      <viscosityOfVapor>cP</viscosityOfVapor>
+      <volume>m3</volume>
+      <volumetricFlow>m3/h</volumetricFlow>
+      <diffusivity>m2/s</diffusivity>
+      <conductance>[kg/s]/[Pa^0.5]</conductance>
+      <mole>kmol</mole>
+      <emission_factor>[kg/s]/kW</emission_factor>
+      <specific_power>kW/[ton/h]</specific_power>
+    </SelectedUnitSystem1>
+    <SimultaneousAdjustSolverEnabled>true</SimultaneousAdjustSolverEnabled>
+    <SpreadsheetUseRegionalSeparator>false</SpreadsheetUseRegionalSeparator>
+    <EnergyBalanceCheck>ShowWarning</EnergyBalanceCheck>
+    <MassBalanceCheck>ShowWarning</MassBalanceCheck>
+    <EnergyBalanceRelativeTolerance>0.01</EnergyBalanceRelativeTolerance>
+    <MassBalanceRelativeTolerance>0.01</MassBalanceRelativeTolerance>
+    <DisplayCornerPropertyList>false</DisplayCornerPropertyList>
+    <DisplayCornerPropertyListPosition>RightBottom</DisplayCornerPropertyListPosition>
+    <DisplayFloatingPropertyTables>true</DisplayFloatingPropertyTables>
+    <DisplayCornerPropertyListFontColor>DimGray</DisplayCornerPropertyListFontColor>
+    <DisplayCornerPropertyListFontName>Consolas</DisplayCornerPropertyListFontName>
+    <DisplayCornerPropertyListFontSize>8</DisplayCornerPropertyListFontSize>
+    <DisplayCornerPropertyListPadding>4</DisplayCornerPropertyListPadding>
+    <DefaultFloatingTableCompoundAmountBasis>Molar_Fractions</DefaultFloatingTableCompoundAmountBasis>
+    <DisplayFloatingTableCompoundAmounts>true</DisplayFloatingTableCompoundAmounts>
+    <SpreadsheetUnitLockingMode>true</SpreadsheetUnitLockingMode>
+    <CompoundOrderingMode>AsAdded</CompoundOrderingMode>
+    <FlowsheetControlPanelMode>false</FlowsheetControlPanelMode>
+    <SkipEquilibriumCalculationOnDefinedStreams>true</SkipEquilibriumCalculationOnDefinedStreams>
+    <ForceStreamPhase>None</ForceStreamPhase>
+    <DisplayUserDefinedPropertiesEditor>false</DisplayUserDefinedPropertiesEditor>
+    <LabelFontSize>10</LabelFontSize>
+    <FlowsheetColorTheme>0</FlowsheetColorTheme>
+    <RegularFontName>OpenSans_SemiCondensed-Regular</RegularFontName>
+    <BoldFontName>OpenSans_SemiCondensed-SemiBold</BoldFontName>
+    <ItalicFontName>OpenSans_SemiCondensed-Italic</ItalicFontName>
+    <BoldItalicFontName>OpenSans_SemiCondensed-MediumItalic</BoldItalicFontName>
+    <DisplayEnergyStreamPowerValue>true</DisplayEnergyStreamPowerValue>
+    <DisplayMaterialStreamMassFlowValue>false</DisplayMaterialStreamMassFlowValue>
+    <DisplayMaterialStreamMolarFlowValue>false</DisplayMaterialStreamMolarFlowValue>
+    <DisplayMaterialStreamVolFlowValue>false</DisplayMaterialStreamVolFlowValue>
+    <DisplayMaterialStreamTemperatureValue>false</DisplayMaterialStreamTemperatureValue>
+    <DisplayMaterialStreamPressureValue>false</DisplayMaterialStreamPressureValue>
+    <DisplayMaterialStreamEnergyFlowValue>false</DisplayMaterialStreamEnergyFlowValue>
+    <AddObjectsWithStreams>2</AddObjectsWithStreams>
+    <DisplayDynamicPropertyValues>true</DisplayDynamicPropertyValues>
+    <CurrentWeather>
+      <Type>DWSIM.SharedClasses.WeatherData</Type>
+      <CurrentCondition>Sunny</CurrentCondition>
+      <WindSpeed_km_h>5</WindSpeed_km_h>
+      <RelativeHumidity_pct>30</RelativeHumidity_pct>
+      <Temperature_C>30</Temperature_C>
+      <SolarIrradiation_kWh_m2>1</SolarIrradiation_kWh_m2>
+      <Latitude>0</Latitude>
+      <Longitude>0</Longitude>
+      <AtmosphericPressure_Pa>101325</AtmosphericPressure_Pa>
+    </CurrentWeather>
+    <CustomCalculationOrder />
+    <SpecCalculationMode>AfterSourceObject</SpecCalculationMode>
+    <ForceObjectSolving>true</ForceObjectSolving>
+    <SaveFlowsheetMessagesInFile>true</SaveFlowsheetMessagesInFile>
+    <RTFAnnotations />
+    <EnabledUndoRedo>false</EnabledUndoRedo>
+    <EnableGHGEmissionsSubsystem>false</EnableGHGEmissionsSubsystem>
+    <FlowsheetTransitionObject>
+      <Type>DWSIM.SharedClasses.DWSIM.Flowsheet.FlowsheetTransitionRestore</Type>
+      <FeatureName />
+      <FeatureType />
+      <Action />
+      <Location />
+      <Position />
+    </FlowsheetTransitionObject>
+    <UniqueID>df89da75-3083-4ae7-b47d-f2e3109e3fde</UniqueID>
+    <RestoreUnitOperationStateAfterError>false</RestoreUnitOperationStateAfterError>
+    <DynamicModeEnabled>false</DynamicModeEnabled>
+    <InformationCarrierCalculationMode>AfterSourceObject</InformationCarrierCalculationMode>
+    <Metadata>
+      <Type>DWSIM.SharedClasses.FlowsheetMetadata</Type>
+      <ProcessType>Unspecified</ProcessType>
+      <ProcessDescription />
+      <KeyCompounds />
+      <KeyReactants />
+      <KeyProducts />
+      <Score>0</Score>
+      <TotalEnergyConsumption>0</TotalEnergyConsumption>
+      <TotalEnergyGeneration>0</TotalEnergyGeneration>
+      <FlowsheetTopology />
+    </Metadata>
+    <CurrentFlowsheetObjectZoomLevel>1</CurrentFlowsheetObjectZoomLevel>
+    <VisibleProperties />
+  </Settings>
+  <DynamicProperties />
+  <GraphicObjects />
+  <PropertyPackages>
+    <PropertyPackage>
+      <ID>PP-2f3f8a31-4779-45a9-9d50-0b633460c7ee</ID>
+      <Type>DWSIM.Thermodynamics.PropertyPackages.NRTLPropertyPackage</Type>
+      <ComponentName>NRTL</ComponentName>
+      <ComponentDescription />
+      <Tag>NRTL</Tag>
+      <UseHenryConstants>true</UseHenryConstants>
+      <AutoEstimateMissingNRTLUNIQUACParameters>true</AutoEstimateMissingNRTLUNIQUACParameters>
+      <UseImmiscibleListForLiquid2InitialEstimates>true</UseImmiscibleListForLiquid2InitialEstimates>
+      <SingleCompoundCheckThreshold>0.99999</SingleCompoundCheckThreshold>
+      <OverrideKvalFugCoeff>false</OverrideKvalFugCoeff>
+      <OverrideEnthalpyCalculation>false</OverrideEnthalpyCalculation>
+      <OverrideEntropyCalculation>false</OverrideEntropyCalculation>
+      <LiquidDensityCalculationMode_Subcritical>Rackett_and_ExpData</LiquidDensityCalculationMode_Subcritical>
+      <LiquidDensityCalculationMode_Supercritical>Rackett_and_ExpData</LiquidDensityCalculationMode_Supercritical>
+      <LiquidDensity_CorrectExpDataForPressure>true</LiquidDensity_CorrectExpDataForPressure>
+      <LiquidDensity_UsePenelouxVolumeTranslation>true</LiquidDensity_UsePenelouxVolumeTranslation>
+      <LiquidViscosityCalculationMode_Subcritical>ExpData</LiquidViscosityCalculationMode_Subcritical>
+      <LiquidViscosityCalculationMode_Supercritical>Letsou_Stiel</LiquidViscosityCalculationMode_Supercritical>
+      <LiquidViscosity_CorrectExpDataForPressure>true</LiquidViscosity_CorrectExpDataForPressure>
+      <LiquidViscosity_MixingRule>MoleAverage</LiquidViscosity_MixingRule>
+      <VaporPhaseFugacityCalculationMode>Ideal</VaporPhaseFugacityCalculationMode>
+      <SolidPhaseFugacityCalculationMethod>FromLiquidFugacity</SolidPhaseFugacityCalculationMethod>
+      <SolidPhaseFugacity_UseIdealLiquidPhaseFugacity>false</SolidPhaseFugacity_UseIdealLiquidPhaseFugacity>
+      <SolidPhaseEnthalpy_UsesCp>false</SolidPhaseEnthalpy_UsesCp>
+      <EnthalpyEntropyCpCvCalculationMode>LeeKesler</EnthalpyEntropyCpCvCalculationMode>
+      <LiquidEnthalpyEntropyCpCvCalculationMode_EOS>EOS</LiquidEnthalpyEntropyCpCvCalculationMode_EOS>
+      <LiquidFugacity_UsePoyntingCorrectionFactor>true</LiquidFugacity_UsePoyntingCorrectionFactor>
+      <ActivityCoefficientModels_IgnoreMissingInteractionParameters>false</ActivityCoefficientModels_IgnoreMissingInteractionParameters>
+      <IgnoreVaporFractionLimit>false</IgnoreVaporFractionLimit>
+      <IgnoreSalinityLimit>false</IgnoreSalinityLimit>
+      <CalculateAdditionalMaterialStreamProperties>true</CalculateAdditionalMaterialStreamProperties>
+      <FlashCalculationApproach>NestedLoops</FlashCalculationApproach>
+      <DisplayMissingCompoundPropertiesWarning>false</DisplayMissingCompoundPropertiesWarning>
+      <ForcedSolids>[]</ForcedSolids>
+      <PropertyOverrides>{}</PropertyOverrides>
+      <InteractionParameters_PR />
+      <InteractionParameters_NRTL />
+      <FlashSettings>
+        <Setting Name="Replace_PTFlash" Value="False" />
+        <Setting Name="ValidateEquilibriumCalc" Value="False" />
+        <Setting Name="UsePhaseIdentificationAlgorithm" Value="False" />
+        <Setting Name="CalculateBubbleAndDewPoints" Value="False" />
+        <Setting Name="ValidationGibbsTolerance" Value="0.01" />
+        <Setting Name="PHFlash_Maximum_Number_Of_External_Iterations" Value="100" />
+        <Setting Name="PHFlash_External_Loop_Tolerance" Value="0.0001" />
+        <Setting Name="PHFlash_Maximum_Number_Of_Internal_Iterations" Value="100" />
+        <Setting Name="PHFlash_Internal_Loop_Tolerance" Value="0.0001" />
+        <Setting Name="PTFlash_Maximum_Number_Of_External_Iterations" Value="100" />
+        <Setting Name="PTFlash_External_Loop_Tolerance" Value="1E-08" />
+        <Setting Name="PTFlash_Maximum_Number_Of_Internal_Iterations" Value="100" />
+        <Setting Name="PTFlash_Internal_Loop_Tolerance" Value="1E-08" />
+        <Setting Name="NL_FastMode" Value="True" />
+        <Setting Name="IO_FastMode" Value="True" />
+        <Setting Name="GM_OptimizationMethod" Value="IPOPT" />
+        <Setting Name="ThreePhaseFlashStabTestSeverity" Value="0" />
+        <Setting Name="ThreePhaseFlashStabTestCompIds" Value="" />
+        <Setting Name="PVFlash_FixedDampingFactor" Value="1.0" />
+        <Setting Name="PVFlash_MaximumTemperatureChange" Value="10.0" />
+        <Setting Name="PVFlash_TemperatureDerivativeEpsilon" Value="0.1" />
+        <Setting Name="ST_Number_of_Random_Tries" Value="20" />
+        <Setting Name="CheckIncipientLiquidForStability" Value="False" />
+        <Setting Name="PHFlash_MaximumTemperatureChange" Value="30.0" />
+        <Setting Name="PTFlash_DampingFactor" Value="1.0" />
+        <Setting Name="ForceEquilibriumCalculationType" Value="Default" />
+        <Setting Name="ImmiscibleWaterOption" Value="False" />
+        <Setting Name="HandleSolidsInDefaultEqCalcMode" Value="False" />
+        <Setting Name="UseIOFlash" Value="False" />
+        <Setting Name="GibbsMinimizationExternalSolver" Value="" />
+        <Setting Name="GibbsMinimizationExternalSolverConfigData" Value="" />
+        <Setting Name="PHFlash_Use_Interpolated_Result_In_Oscillating_Temperature_Cases" Value="False" />
+        <Setting Name="PVFlash_TryIdealCalcOnFailure" Value="True" />
+        <Setting Name="FailSafeCalculationMode" Value="1" />
+        <Setting Name="PVFlash_FivePointStencilNumericalDerivative" Value="False" />
+        <Setting Name="NestedLoops_v2" Value="False" />
+      </FlashSettings>
+    </PropertyPackage>
+  </PropertyPackages>
+  <Compounds>
+    <Compound>
+      <Type>DWSIM.Thermodynamics.BaseClasses.ConstantProperties</Type>
+      <Acentric_Factor>0.307</Acentric_Factor>
+      <BO_BSW>0</BO_BSW>
+      <BO_GOR>0</BO_GOR>
+      <BO_OilVisc1>0</BO_OilVisc1>
+      <BO_OilVisc2>0</BO_OilVisc2>
+      <BO_OilViscTemp1>0</BO_OilViscTemp1>
+      <BO_OilViscTemp2>0</BO_OilViscTemp2>
+      <BO_PNA_A>0</BO_PNA_A>
+      <BO_RsMult>1</BO_RsMult>
+      <BO_BoMult>1</BO_BoMult>
+      <BO_PbMult>1</BO_PbMult>
+      <BO_OilViscMult>1</BO_OilViscMult>
+      <BO_PNA_N>0</BO_PNA_N>
+      <BO_PNA_P>0</BO_PNA_P>
+      <BO_SGG>0</BO_SGG>
+      <BO_SGO>0</BO_SGO>
+      <CAS_Number>67-64-1</CAS_Number>
+      <Chao_Seader_Acentricity>0.3099</Chao_Seader_Acentricity>
+      <Chao_Seader_Liquid_Molar_Volume>73.8386</Chao_Seader_Liquid_Molar_Volume>
+      <Chao_Seader_Solubility_Parameter>0.0047123599262</Chao_Seader_Solubility_Parameter>
+      <Charge>0</Charge>
+      <ChemicalStructure />
+      <Comments />
+      <CompCreatorStudyFile />
+      <LinkedJsonFile />
+      <Critical_Compressibility>0.233</Critical_Compressibility>
+      <Critical_Pressure>4700000</Critical_Pressure>
+      <Critical_Temperature>508.1</Critical_Temperature>
+      <Critical_Volume>0.209</Critical_Volume>
+      <CurrentDB>ChemSep</CurrentDB>
+      <Dipole_Moment>9.61E-30</Dipole_Moment>
+      <Electrolyte_Cp0>0</Electrolyte_Cp0>
+      <Electrolyte_DelGF>0</Electrolyte_DelGF>
+      <Electrolyte_DelHF>0</Electrolyte_DelHF>
+      <EnthalpyOfFusionAtTf>5.774</EnthalpyOfFusionAtTf>
+      <Formula>CH3COCH3</Formula>
+      <HVap_A>66943000</HVap_A>
+      <HVap_B>3.4736</HVap_B>
+      <HVap_C>-8.9271</HVap_C>
+      <HVap_D>10.062</HVap_D>
+      <HVap_E>-4.1656</HVap_E>
+      <HVap_TMAX>508.15</HVap_TMAX>
+      <HVap_TMIN>178.45</HVap_TMIN>
+      <HydrationNumber>0</HydrationNumber>
+      <ID>1051</ID>
+      <Ideal_Gas_Heat_Capacity_Const_A>52915</Ideal_Gas_Heat_Capacity_Const_A>
+      <Ideal_Gas_Heat_Capacity_Const_B>-669.27</Ideal_Gas_Heat_Capacity_Const_B>
+      <Ideal_Gas_Heat_Capacity_Const_C>12.201</Ideal_Gas_Heat_Capacity_Const_C>
+      <Ideal_Gas_Heat_Capacity_Const_D>0.00012839</Ideal_Gas_Heat_Capacity_Const_D>
+      <Ideal_Gas_Heat_Capacity_Const_E>-5.8844E-08</Ideal_Gas_Heat_Capacity_Const_E>
+      <IdealgasCpEquation>16</IdealgasCpEquation>
+      <IG_Enthalpy_of_Formation_25C>-3713.8979674974526</IG_Enthalpy_of_Formation_25C>
+      <IG_Entropy_of_Formation_25C>-3.7190402336092814</IG_Entropy_of_Formation_25C>
+      <IG_Gibbs_Energy_of_Formation_25C>-2605.0661218468454</IG_Gibbs_Energy_of_Formation_25C>
+      <InChI />
+      <Ion_CpAq_a>0</Ion_CpAq_a>
+      <Ion_CpAq_b>0</Ion_CpAq_b>
+      <Ion_CpAq_c>0</Ion_CpAq_c>
+      <IsBlackOil>false</IsBlackOil>
+      <IsCOOLPROPSupported>false</IsCOOLPROPSupported>
+      <IsFPROPSSupported>false</IsFPROPSSupported>
+      <IsHydratedSalt>false</IsHydratedSalt>
+      <IsHYPO>0</IsHYPO>
+      <IsIon>false</IsIon>
+      <IsModified>false</IsModified>
+      <IsPF>0</IsPF>
+      <IsSalt>false</IsSalt>
+      <Liquid_Density_Const_A>1.1051</Liquid_Density_Const_A>
+      <Liquid_Density_Const_B>0.24556</Liquid_Density_Const_B>
+      <Liquid_Density_Const_C>508.21</Liquid_Density_Const_C>
+      <Liquid_Density_Const_D>0.27409</Liquid_Density_Const_D>
+      <Liquid_Density_Const_E>0</Liquid_Density_Const_E>
+      <Liquid_Density_Tmax>508.2</Liquid_Density_Tmax>
+      <Liquid_Density_Tmin>178</Liquid_Density_Tmin>
+      <Liquid_Heat_Capacity_Const_A>107130</Liquid_Heat_Capacity_Const_A>
+      <Liquid_Heat_Capacity_Const_B>725.57</Liquid_Heat_Capacity_Const_B>
+      <Liquid_Heat_Capacity_Const_C>0.95296</Liquid_Heat_Capacity_Const_C>
+      <Liquid_Heat_Capacity_Const_D>0.025981</Liquid_Heat_Capacity_Const_D>
+      <Liquid_Heat_Capacity_Const_E>-1.439E-05</Liquid_Heat_Capacity_Const_E>
+      <Liquid_Heat_Capacity_Tmax>329.44</Liquid_Heat_Capacity_Tmax>
+      <Liquid_Heat_Capacity_Tmin>178.45</Liquid_Heat_Capacity_Tmin>
+      <Liquid_Thermal_Conductivity_Const_A>0.01013</Liquid_Thermal_Conductivity_Const_A>
+      <Liquid_Thermal_Conductivity_Const_B>-95.32</Liquid_Thermal_Conductivity_Const_B>
+      <Liquid_Thermal_Conductivity_Const_C>-0.21151</Liquid_Thermal_Conductivity_Const_C>
+      <Liquid_Thermal_Conductivity_Const_D>-0.0052616</Liquid_Thermal_Conductivity_Const_D>
+      <Liquid_Thermal_Conductivity_Const_E>2.3043E-06</Liquid_Thermal_Conductivity_Const_E>
+      <Liquid_Thermal_Conductivity_Tmax>343.15</Liquid_Thermal_Conductivity_Tmax>
+      <Liquid_Thermal_Conductivity_Tmin>178.45</Liquid_Thermal_Conductivity_Tmin>
+      <Liquid_Viscosity_Const_A>-14.064</Liquid_Viscosity_Const_A>
+      <Liquid_Viscosity_Const_B>1000.7</Liquid_Viscosity_Const_B>
+      <Liquid_Viscosity_Const_C>0.45349</Liquid_Viscosity_Const_C>
+      <Liquid_Viscosity_Const_D>3.9456E-07</Liquid_Viscosity_Const_D>
+      <Liquid_Viscosity_Const_E>2</Liquid_Viscosity_Const_E>
+      <LiquidDensityEquation>105</LiquidDensityEquation>
+      <LiquidHeatCapacityEquation>16</LiquidHeatCapacityEquation>
+      <LiquidThermalConductivityEquation>16</LiquidThermalConductivityEquation>
+      <LiquidViscosityEquation>101</LiquidViscosityEquation>
+      <Molar_Weight>58.07914</Molar_Weight>
+      <MolarVolume_k1i>0</MolarVolume_k1i>
+      <MolarVolume_k2i>0</MolarVolume_k2i>
+      <MolarVolume_k3i>0</MolarVolume_k3i>
+      <MolarVolume_v2i>0</MolarVolume_v2i>
+      <MolarVolume_v3i>0</MolarVolume_v3i>
+      <Name>Acetone</Name>
+      <NBP>329.22</NBP>
+      <NegativeIon />
+      <NegativeIonStoichCoeff>0</NegativeIonStoichCoeff>
+      <Normal_Boiling_Point>329.22</Normal_Boiling_Point>
+      <OriginalDB>ChemSep</OriginalDB>
+      <PC_SAFT_epsilon_k>0</PC_SAFT_epsilon_k>
+      <PC_SAFT_m>0</PC_SAFT_m>
+      <PC_SAFT_sigma>0</PC_SAFT_sigma>
+      <PositiveIon />
+      <PositiveIonStoichCoeff>0</PositiveIonStoichCoeff>
+      <PR_Volume_Translation_Coefficient>0</PR_Volume_Translation_Coefficient>
+      <SMILES>CC(=O)C</SMILES>
+      <Solid_Density_Const_A>16.677</Solid_Density_Const_A>
+      <Solid_Density_Const_B>1.103E-09</Solid_Density_Const_B>
+      <Solid_Density_Const_C>0</Solid_Density_Const_C>
+      <Solid_Density_Const_D>0</Solid_Density_Const_D>
+      <Solid_Density_Const_E>0</Solid_Density_Const_E>
+      <Solid_Density_Tmax>183.65</Solid_Density_Tmax>
+      <Solid_Density_Tmin>174.15</Solid_Density_Tmin>
+      <Solid_Heat_Capacity_Const_A>-13993</Solid_Heat_Capacity_Const_A>
+      <Solid_Heat_Capacity_Const_B>1377</Solid_Heat_Capacity_Const_B>
+      <Solid_Heat_Capacity_Const_C>-8.1059</Solid_Heat_Capacity_Const_C>
+      <Solid_Heat_Capacity_Const_D>0.029271</Solid_Heat_Capacity_Const_D>
+      <Solid_Heat_Capacity_Const_E>-4.792E-05</Solid_Heat_Capacity_Const_E>
+      <Solid_Heat_Capacity_Tmax>178.45</Solid_Heat_Capacity_Tmax>
+      <Solid_Heat_Capacity_Tmin>25</Solid_Heat_Capacity_Tmin>
+      <SolidDensityAtTs>0</SolidDensityAtTs>
+      <SolidDensityEquation>2</SolidDensityEquation>
+      <SolidHeatCapacityEquation>100</SolidHeatCapacityEquation>
+      <SolidTs>0</SolidTs>
+      <SRK_Volume_Translation_Coefficient>0</SRK_Volume_Translation_Coefficient>
+      <StandardStateMolarVolume>0</StandardStateMolarVolume>
+      <StoichSum>0</StoichSum>
+      <Surface_Tension_Const_A>-0.036769</Surface_Tension_Const_A>
+      <Surface_Tension_Const_B>-1.4835</Surface_Tension_Const_B>
+      <Surface_Tension_Const_C>-2.315</Surface_Tension_Const_C>
+      <Surface_Tension_Const_D>-0.0012473</Surface_Tension_Const_D>
+      <Surface_Tension_Const_E>-1.404E-06</Surface_Tension_Const_E>
+      <Surface_Tension_Tmax>490.84</Surface_Tension_Tmax>
+      <Surface_Tension_Tmin>178.45</Surface_Tension_Tmin>
+      <SurfaceTensionEquation>16</SurfaceTensionEquation>
+      <TemperatureOfFusion>178.45</TemperatureOfFusion>
+      <UNIQUAC_Q>2.336</UNIQUAC_Q>
+      <UNIQUAC_R>2.5735</UNIQUAC_R>
+      <Vapor_Pressure_Constant_A>72.77713</Vapor_Pressure_Constant_A>
+      <Vapor_Pressure_Constant_B>-5752.936</Vapor_Pressure_Constant_B>
+      <Vapor_Pressure_Constant_C>-7.680083</Vapor_Pressure_Constant_C>
+      <Vapor_Pressure_Constant_D>6.83076E-06</Vapor_Pressure_Constant_D>
+      <Vapor_Pressure_Constant_E>2</Vapor_Pressure_Constant_E>
+      <Vapor_Pressure_TMAX>508.2</Vapor_Pressure_TMAX>
+      <Vapor_Pressure_TMIN>178.45</Vapor_Pressure_TMIN>
+      <Vapor_Thermal_Conductivity_Const_A>-26.882</Vapor_Thermal_Conductivity_Const_A>
+      <Vapor_Thermal_Conductivity_Const_B>0.9036</Vapor_Thermal_Conductivity_Const_B>
+      <Vapor_Thermal_Conductivity_Const_C>-120950000</Vapor_Thermal_Conductivity_Const_C>
+      <Vapor_Thermal_Conductivity_Const_D>-608790000</Vapor_Thermal_Conductivity_Const_D>
+      <Vapor_Thermal_Conductivity_Const_E>0</Vapor_Thermal_Conductivity_Const_E>
+      <Vapor_Thermal_Conductivity_Tmax>1000</Vapor_Thermal_Conductivity_Tmax>
+      <Vapor_Thermal_Conductivity_Tmin>178.45</Vapor_Thermal_Conductivity_Tmin>
+      <Vapor_Viscosity_Const_A>3.1012E-08</Vapor_Viscosity_Const_A>
+      <Vapor_Viscosity_Const_B>0.97616</Vapor_Viscosity_Const_B>
+      <Vapor_Viscosity_Const_C>23.042</Vapor_Viscosity_Const_C>
+      <Vapor_Viscosity_Const_D>14.834</Vapor_Viscosity_Const_D>
+      <Vapor_Viscosity_Const_E>0</Vapor_Viscosity_Const_E>
+      <Vapor_Viscosity_Tmax>1000</Vapor_Viscosity_Tmax>
+      <Vapor_Viscosity_Tmin>178.45</Vapor_Viscosity_Tmin>
+      <VaporizationEnthalpyEquation>106</VaporizationEnthalpyEquation>
+      <VaporPressureEquation>101</VaporPressureEquation>
+      <VaporThermalConductivityEquation>102</VaporThermalConductivityEquation>
+      <VaporViscosityEquation>102</VaporViscosityEquation>
+      <Z_Rackett>0</Z_Rackett>
+      <FullerDiffusionVolume>67.67</FullerDiffusionVolume>
+      <LennardJonesDiameter>4.5E-10</LennardJonesDiameter>
+      <LennardJonesEnergy>549</LennardJonesEnergy>
+      <Parachor>0.0289</Parachor>
+      <Tag />
+      <COSTALD_SRK_Acentric_Factor>0.3149</COSTALD_SRK_Acentric_Factor>
+      <COSTALD_Characteristic_Volume>0.20983</COSTALD_Characteristic_Volume>
+      <IsSolid>false</IsSolid>
+      <ChemSepFamily>26</ChemSepFamily>
+      <Vapor_Pressure_Regression_Fit>0</Vapor_Pressure_Regression_Fit>
+      <Vapor_Pressure_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Vapor_Pressure_Tabular_Data>
+      <Ideal_Gas_Heat_Capacity_Regression_Fit>0</Ideal_Gas_Heat_Capacity_Regression_Fit>
+      <Ideal_Gas_Heat_Capacity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Ideal_Gas_Heat_Capacity_Tabular_Data>
+      <Liquid_Viscosity_Regression_Fit>0</Liquid_Viscosity_Regression_Fit>
+      <Liquid_Viscosity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Liquid_Viscosity_Tabular_Data>
+      <Liquid_Density_Regression_Fit>0</Liquid_Density_Regression_Fit>
+      <Liquid_Density_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Liquid_Density_Tabular_Data>
+      <Liquid_Heat_Capacity_Regression_Fit>0</Liquid_Heat_Capacity_Regression_Fit>
+      <Liquid_Heat_Capacity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Liquid_Heat_Capacity_Tabular_Data>
+      <Liquid_Thermal_Conductivity_Regression_Fit>0</Liquid_Thermal_Conductivity_Regression_Fit>
+      <Liquid_Thermal_Conductivity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Liquid_Thermal_Conductivity_Tabular_Data>
+      <Vapor_Thermal_Conductivity_Regression_Fit>0</Vapor_Thermal_Conductivity_Regression_Fit>
+      <Vapor_Thermal_Conductivity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Vapor_Thermal_Conductivity_Tabular_Data>
+      <Vapor_Viscosity_Regression_Fit>0</Vapor_Viscosity_Regression_Fit>
+      <Vapor_Viscosity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Vapor_Viscosity_Tabular_Data>
+      <Solid_Density_Regression_Fit>0</Solid_Density_Regression_Fit>
+      <Solid_Density_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Solid_Density_Tabular_Data>
+      <Surface_Tension_Regression_Fit>0</Surface_Tension_Regression_Fit>
+      <Surface_Tension_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Surface_Tension_Tabular_Data>
+      <Solid_Heat_Capacity_Regression_Fit>0</Solid_Heat_Capacity_Regression_Fit>
+      <Solid_Heat_Capacity_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Solid_Heat_Capacity_Tabular_Data>
+      <Enthalpy_Of_Vaporization_Regression_Fit>0</Enthalpy_Of_Vaporization_Regression_Fit>
+      <Enthalpy_Of_Vaporization_Tabular_Data>
+        <Type>DWSIM.SharedClasses.TabularData</Type>
+        <XName />
+        <YName />
+        <XUnit />
+        <YUnit />
+        <XData />
+        <YData />
+        <Source />
+        <Comments />
+      </Enthalpy_Of_Vaporization_Tabular_Data>
+      <StandardHeatOfCombustion_LHV>-28564.47254556455</StandardHeatOfCombustion_LHV>
+      <DynamicProperties />
+      <UNIFACGroups>
+        <Item GroupID="1" Value="1" />
+        <Item GroupID="19" Value="1" />
+      </UNIFACGroups>
+      <MODFACGroups>
+        <Item GroupID="1" Value="1" />
+        <Item GroupID="18" Value="1" />
+      </MODFACGroups>
+      <NISTMODFACGroups>
+        <Item GroupID="1" Value="1" />
+        <Item GroupID="18" Value="1" />
+      </NISTMODFACGroups>
+      <Elements>
+        <Item Name="C" Value="3" />
+        <Item Name="H" Value="6" />
+        <Item Name="O" Value="1" />
+      </Elements>
+    </Compound>
+  </Compounds>
+  <ReactionSets>
+    <ReactionSet>
+      <ID>DefaultSet</ID>
+      <Name>Default Set</Name>
+      <Description />
+      <Reactions />
+    </ReactionSet>
+  </ReactionSets>
+  <Reactions />
+  <StoredSolutions />
+  <DynamicsManager>
+    <Type>DWSIM.DynamicsManager.Manager</Type>
+    <Description />
+    <CurrentSchedule />
+    <EnableHistorian>true</EnableHistorian>
+    <MaxHistorianItems>1000</MaxHistorianItems>
+    <ScheduleList />
+    <EventSetList />
+    <IntegratorList />
+  </DynamicsManager>
+  <OptimizationCases />
+  <SensitivityAnalysis />
+  <ScriptItems />
+  <ChartItems />
+  <ParticleSizeDistributions />
+  <Results>
+    <Type>DWSIM.SharedClasses.DWSIM.Flowsheet.FlowsheetResults</Type>
+    <TotalCAPEX>0</TotalCAPEX>
+    <TotalOPEX>0</TotalOPEX>
+    <ResidualMassBalance>0</ResidualMassBalance>
+    <TotalEnergyBalance>0</TotalEnergyBalance>
+    <AdditionalResults />
+  </Results>
+</DWSIM_Simulation_Data>

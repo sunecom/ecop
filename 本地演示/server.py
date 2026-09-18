@@ -10,6 +10,7 @@ PORT = 18765
 MCP = os.environ.get('DWSIM_MCP_URL', 'http://localhost:15901/mcp')
 TOKEN = Path(os.environ.get('DWSIM_TOKEN_FILE', str(BASE.parent / '.local/mcp-token.txt'))).read_text().strip()
 RUNS = Path(os.environ.get('ECOP_RUNS_DIR', str(BASE / 'runs')))
+MODEL_DIR = os.environ.get('DWSIM_MODEL_DIR', '/models')
 NONCE = secrets.token_urlsafe(24)
 LOCK = threading.Lock()
 SHA = os.environ.get('DWSIM_BUILD_REFERENCE', '0cd6a30ce1b5eb976cdd94495d102a9691b067f5')
@@ -220,7 +221,13 @@ def calculate(data):
             module_name, unit_type, unit_name = '纯水泵升压', 'Pump', 'P-01'
             inlet_temperature, inlet_pressure = values['inlet_temperature_C'], values['inlet_pressure_kPa']
 
-        flowsheet_id = call('dwsim_flowsheet_create', name='ECOP ' + module_name)['flowsheet_id']
+        if module == 'material_flash':
+            flowsheet_id = call(
+                'dwsim_flowsheet_load',
+                filepath=material_systems.template_path(values, MODEL_DIR))['flowsheet_id']
+        else:
+            flowsheet_id = call(
+                'dwsim_flowsheet_create', name='ECOP ' + module_name)['flowsheet_id']
 
         def tool(tool_name, **kwargs):
             return call(tool_name, flowsheet_id=flowsheet_id, **kwargs)

@@ -15,6 +15,7 @@ services:
       ECOP_PASSWORD_FILE: /run/secrets/ecop_password
       DWSIM_MCP_URL: http://dwsim:5901/mcp
       DWSIM_TOKEN_FILE: /run/secrets/mcp_token
+      DWSIM_MODEL_DIR: /models
       DWSIM_BUILD_REFERENCE: "image:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36"
       ECOP_RUNS_DIR: /data/runs
     secrets: [ecop_password, mcp_token]
@@ -51,6 +52,8 @@ services:
         test -n "$$token" || { echo "MCP token is empty" >&2; exit 1; }
         exec /opt/dwsim-mcp/dwsim-mcp --http --host 0.0.0.0 --port 5901 --token "$$token"
     secrets: [mcp_token]
+    volumes:
+      - ./models:/models:ro
     networks: [engine]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]

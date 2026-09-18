@@ -1,5 +1,7 @@
 """Controlled P2 material-system and property-package flash workflow."""
+import hashlib
 import math
+import xml.etree.ElementTree as ET
 
 from basic_units import mixture, require_finite, solve, vapor_fraction
 
@@ -8,6 +10,16 @@ PROPERTY_PACKAGES = {
     'steam_tables': 'Steam Tables (IAPWS-IF97)',
     'nrtl': 'NRTL',
     'raoult': "Raoult's Law",
+}
+
+TEMPLATE_FILENAMES = {
+    ('water', 'steam_tables'): 'material_water_steam_tables.dwxml',
+    ('ethanol', 'nrtl'): 'material_ethanol_nrtl.dwxml',
+    ('ethanol', 'raoult'): 'material_ethanol_raoult.dwxml',
+    ('acetone', 'nrtl'): 'material_acetone_nrtl.dwxml',
+    ('acetone', 'raoult'): 'material_acetone_raoult.dwxml',
+    ('water_ethanol', 'nrtl'): 'material_water_ethanol_nrtl.dwxml',
+    ('water_ethanol', 'raoult'): 'material_water_ethanol_raoult.dwxml',
 }
 
 SYSTEMS = {
@@ -60,7 +72,8 @@ MASS_FRACTION_TOLERANCE = 1e-8
 MASS_FLOW_TOLERANCE_KG_H = 1e-6
 PRESSURE_TOLERANCE_KPA = 0.02
 VAPOR_FRACTION_TOLERANCE = 1e-5
-PHASE_BALANCE_RELATIVE_TOLERANCE = 2e-5
+PHASE_BALANCE_RELATIVE_TOLERANCE = 1e-6
+FLASH_SOLVER_TOLERANCE = '1E-08'
 
 
 def validate(data, number):
@@ -125,6 +138,62 @@ def require_composition(label, actual, expected):
 def mole_fractions(stream, phase_name='Mixture'):
     compounds = phase(stream, phase_name).get('compounds', {})
     return {name: float(values['mole_fraction']) for name, values in compounds.items()}
+
+
+def template_path(values, model_dir='/models'):
+    filename = TEMPLATE_FILENAMES[
+        (values['system'], values['property_package_id'])]
+    return model_dir.rstrip('/\\') + '/' + filename
+
+
+def verify_template(values, tool):
+    exported = tool('dwsim_flowsheet_get_xml')
+    xml_text = exported.get('xml', '')
+    if not xml_text:
+        raise RuntimeError('引擎未返回受控物系模板XML')
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        raise RuntimeError('受控物系模板XML无法解析') from exc
+    if root.findall('./SimulationObjects/SimulationObject'):
+        raise RuntimeError('受控物系模板不是空白流程')
+    compounds = [node.findtext('Name') for node in root.findall('./Compounds/Compound')]
+    if set(compounds) != set(values['compounds']) or len(compounds) != len(values['compounds']):
+        raise RuntimeError('组分设置后回读不一致')
+    packages = root.findall('./PropertyPackages/PropertyPackage')
+    package_names = [node.findtext('ComponentName') for node in packages]
+    if package_names != [values['property_package']]:
+        raise RuntimeError('物性包设置后回读不一致')
+    expected_settings = {
+        'PTFlash_External_Loop_Tolerance': FLASH_SOLVER_TOLERANCE,
+        'PTFlash_Internal_Loop_Tolerance': FLASH_SOLVER_TOLERANCE,
+    }
+    setting_values = {}
+    for setting in root.findall('.//Setting'):
+        name = setting.get('Name')
+        if name in expected_settings:
+            if name in setting_values:
+                raise RuntimeError('受控物系模板闪蒸设置重复')
+            setting_values[name] = setting.get('Value')
+    if setting_values != expected_settings:
+        raise RuntimeError('受控物系模板闪蒸精度设置不一致')
+    return {
+        'compounds_applied': {
+            'added': compounds,
+            'source': 'preloaded_controlled_template',
+        },
+        'property_package_applied': {
+            'property_package': package_names[0],
+            'source': 'preloaded_controlled_template',
+        },
+        'template': {
+            'file': TEMPLATE_FILENAMES[
+                (values['system'], values['property_package_id'])],
+            'xml_readback_sha256': hashlib.sha256(xml_text.encode()).hexdigest(),
+            'flash_settings': setting_values,
+            'simulation_objects_before_run': 0,
+        },
+    }
 
 
 def phase_balance(feed, product, compounds):
@@ -219,11 +288,27 @@ def phase_balance(feed, product, compounds):
         product_mass_flow * 3600 * PHASE_BALANCE_RELATIVE_TOLERANCE)
     phase_molar_tolerance = max(
         1e-5, product_molar_flow * 3600 * PHASE_BALANCE_RELATIVE_TOLERANCE)
-    if abs(phase_mass_residual) > phase_mass_tolerance or \
-            max(abs(value) for value in mass_residuals.values()) > phase_mass_tolerance:
+    component_mass_tolerances = {
+        name: max(MASS_FLOW_TOLERANCE_KG_H,
+                  abs(feed_component_mass[name]) * PHASE_BALANCE_RELATIVE_TOLERANCE)
+        for name in compounds}
+    component_molar_tolerances = {
+        name: max(1e-5,
+                  abs(feed_component_molar[name]) * PHASE_BALANCE_RELATIVE_TOLERANCE)
+        for name in compounds}
+    component_mass_relative_residuals = {
+        name: abs(mass_residuals[name]) / max(abs(feed_component_mass[name]), 1e-12)
+        for name in compounds}
+    component_molar_relative_residuals = {
+        name: abs(molar_residuals[name]) / max(abs(feed_component_molar[name]), 1e-12)
+        for name in compounds}
+    if abs(phase_mass_residual) > phase_mass_tolerance or any(
+            abs(mass_residuals[name]) > component_mass_tolerances[name]
+            for name in compounds):
         raise RuntimeError('汽液相重组分组分质量衡算未通过')
-    if abs(phase_molar_residual) > phase_molar_tolerance or \
-            max(abs(value) for value in molar_residuals.values()) > phase_molar_tolerance:
+    if abs(phase_molar_residual) > phase_molar_tolerance or any(
+            abs(molar_residuals[name]) > component_molar_tolerances[name]
+            for name in compounds):
         raise RuntimeError('汽液相重组分组分摩尔衡算未通过')
     return {
         'phase_fraction_basis': 'molar',
@@ -233,19 +318,20 @@ def phase_balance(feed, product, compounds):
         'phase_molar_residual_mol_h': phase_molar_residual,
         'phase_mass_tolerance_kg_h': phase_mass_tolerance,
         'phase_molar_tolerance_mol_h': phase_molar_tolerance,
+        'phase_balance_relative_tolerance': PHASE_BALANCE_RELATIVE_TOLERANCE,
+        'component_phase_mass_tolerances_kg_h': component_mass_tolerances,
+        'component_phase_molar_tolerances_mol_h': component_molar_tolerances,
         'component_phase_mass_residuals_kg_h': mass_residuals,
         'component_phase_molar_residuals_mol_h': molar_residuals,
+        'component_phase_mass_relative_residuals': component_mass_relative_residuals,
+        'component_phase_molar_relative_residuals': component_molar_relative_residuals,
     }
 
 
 def run(values, tool):
-    compounds_applied = tool('dwsim_thermo_add_compounds', names=values['compounds'])
-    if set(compounds_applied.get('added', [])) != set(values['compounds']):
-        raise RuntimeError('组分设置后回读不一致')
-    package_applied = tool(
-        'dwsim_thermo_set_property_package', name=values['property_package'])
-    if package_applied.get('property_package') != values['property_package']:
-        raise RuntimeError('物性包设置后回读不一致')
+    template_readback = verify_template(values, tool)
+    compounds_applied = template_readback['compounds_applied']
+    package_applied = template_readback['property_package_applied']
 
     requested_flow = values['flow_kg_h'] / 3600
     tool('dwsim_stream_add_material', name='FEED',
@@ -309,6 +395,10 @@ def run(values, tool):
             phase_distribution['component_phase_mass_residuals_kg_h'].values()),
         'max_phase_component_molar_residual_mol_h': max(abs(value) for value in
             phase_distribution['component_phase_molar_residuals_mol_h'].values()),
+        'max_phase_component_mass_relative_residual': max(
+            phase_distribution['component_phase_mass_relative_residuals'].values()),
+        'max_phase_component_molar_relative_residual': max(
+            phase_distribution['component_phase_molar_relative_residuals'].values()),
         'feed_mass_fraction_sum': sum(feed_composition.values()),
         'product_mass_fraction_sum': sum(product_composition.values()),
     }
@@ -369,5 +459,6 @@ def run(values, tool):
             'applied': applied,
             'property_package_applied': package_applied,
             'compounds_applied': compounds_applied,
+            'controlled_template': template_readback['template'],
         },
     }

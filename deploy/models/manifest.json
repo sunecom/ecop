@@ -1,0 +1,162 @@
+{
+  "schema_version": "1.0",
+  "engine": "DWSIM 10.2.8",
+  "generated_at_epoch": 1789749169,
+  "flash_settings": {
+    "PTFlash_External_Loop_Tolerance": "1E-08",
+    "PTFlash_Internal_Loop_Tolerance": "1E-08"
+  },
+  "templates": [
+    {
+      "system": "water",
+      "property_package_id": "steam_tables",
+      "property_package": "Steam Tables (IAPWS-IF97)",
+      "compounds": [
+        "Water"
+      ],
+      "file": "material_water_steam_tables.dwxml",
+      "sha256": "8dfe54ed126d9e1e7b42dc0b17c90f8a540cbfe9053263107afdab37dcf596c3",
+      "bytes": 30116,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Water"
+          ]
+        },
+        "property_package": {
+          "property_package": "Steam Tables (IAPWS-IF97)"
+        }
+      }
+    },
+    {
+      "system": "ethanol",
+      "property_package_id": "nrtl",
+      "property_package": "NRTL",
+      "compounds": [
+        "Ethanol"
+      ],
+      "file": "material_ethanol_nrtl.dwxml",
+      "sha256": "3398bb817b71337237c191ade2adc7d3bf1d3b253b9fa8bea3083f6ea9b8fb54",
+      "bytes": 30356,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Ethanol"
+          ]
+        },
+        "property_package": {
+          "property_package": "NRTL"
+        }
+      }
+    },
+    {
+      "system": "ethanol",
+      "property_package_id": "raoult",
+      "property_package": "Raoult's Law",
+      "compounds": [
+        "Ethanol"
+      ],
+      "file": "material_ethanol_raoult.dwxml",
+      "sha256": "47f9eb3389a40c7479957e2226b2dda759bccc62b4b24f678c8a535150cb0206",
+      "bytes": 30300,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Ethanol"
+          ]
+        },
+        "property_package": {
+          "property_package": "Raoult's Law"
+        }
+      }
+    },
+    {
+      "system": "acetone",
+      "property_package_id": "nrtl",
+      "property_package": "NRTL",
+      "compounds": [
+        "Acetone"
+      ],
+      "file": "material_acetone_nrtl.dwxml",
+      "sha256": "6e3e94a2f86a255f9e1d7127fdf524011ddf4de307c2c06be7664759f3a53b39",
+      "bytes": 30260,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Acetone"
+          ]
+        },
+        "property_package": {
+          "property_package": "NRTL"
+        }
+      }
+    },
+    {
+      "system": "acetone",
+      "property_package_id": "raoult",
+      "property_package": "Raoult's Law",
+      "compounds": [
+        "Acetone"
+      ],
+      "file": "material_acetone_raoult.dwxml",
+      "sha256": "a5c92a8e0308cd930a1a3b0c9d30be2aaf12ef141091ff68a5ec83c6dfce8f93",
+      "bytes": 30204,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Acetone"
+          ]
+        },
+        "property_package": {
+          "property_package": "Raoult's Law"
+        }
+      }
+    },
+    {
+      "system": "water_ethanol",
+      "property_package_id": "nrtl",
+      "property_package": "NRTL",
+      "compounds": [
+        "Water",
+        "Ethanol"
+      ],
+      "file": "material_water_ethanol_nrtl.dwxml",
+      "sha256": "4b9449baf54f5ca9e1050c7e9be612d182ff51fa0dfcdb29bd2297b22b83305e",
+      "bytes": 45498,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Water",
+            "Ethanol"
+          ]
+        },
+        "property_package": {
+          "property_package": "NRTL"
+        }
+      }
+    },
+    {
+      "system": "water_ethanol",
+      "property_package_id": "raoult",
+      "property_package": "Raoult's Law",
+      "compounds": [
+        "Water",
+        "Ethanol"
+      ],
+      "file": "material_water_ethanol_raoult.dwxml",
+      "sha256": "99ac2f80b0ef127fabe9cacace9d71493f3eb909c432dfe771689af77e15774d",
+      "bytes": 45235,
+      "engine_configuration_readback": {
+        "compounds": {
+          "added": [
+            "Water",
+            "Ethanol"
+          ]
+        },
+        "property_package": {
+          "property_package": "Raoult's Law"
+        }
+      }
+    }
+  ]
+}

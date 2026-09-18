@@ -109,9 +109,12 @@ def main():
         requested = case['payload']['vapor_molar_percent'] / 100
         if abs(results['mass_residual_kg_h']) > tolerance['overall_mass_residual_abs_kg_h']:
             raise AssertionError(f"{case['id']} total mass balance failed")
-        allowed_mass = case['payload']['flow_kg_h'] * tolerance['phase_balance_relative']
-        if results['max_phase_component_mass_residual_kg_h'] > allowed_mass:
+        if results['max_phase_component_mass_relative_residual'] > \
+                tolerance['phase_balance_relative']:
             raise AssertionError(f"{case['id']} phase component mass balance failed")
+        if results['max_phase_component_molar_relative_residual'] > \
+                tolerance['phase_balance_relative']:
+            raise AssertionError(f"{case['id']} phase component molar balance failed")
         if abs(results['outlet_pressure_kPa'] - case['payload']['pressure_kPa']) > \
                 tolerance['target_pressure_abs_kPa']:
             raise AssertionError(f"{case['id']} pressure target missed")
@@ -124,6 +127,10 @@ def main():
             raise AssertionError(f"{case['id']} property package readback mismatch")
         if set(data['raw']['compounds_applied']['added']) != set(data['inputs']['compounds']):
             raise AssertionError(f"{case['id']} compound readback mismatch")
+        if data['raw']['controlled_template']['flash_settings'] != {
+                'PTFlash_External_Loop_Tolerance': '1E-08',
+                'PTFlash_Internal_Loop_Tolerance': '1E-08'}:
+            raise AssertionError(f"{case['id']} controlled flash settings mismatch")
         temperatures[case['id']] = results['outlet_temperature_C']
         evidence['material_runs'].append({
             'id': case['id'], 'run_id': data['run_id'], 'inputs': data['inputs'],
