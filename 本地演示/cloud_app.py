@@ -45,6 +45,8 @@ def application(environ, start_response):
                        .replace('本机 DWSIM', '服务端 DWSIM').encode(), 'text/html; charset=utf-8')
     if method == 'GET' and path == '/logo.png':
         return respond('200 OK', (server.BASE / 'logo.png').read_bytes(), 'image/png')
+    if method == 'GET' and path == '/ecop-logo.jpg':
+        return respond('200 OK', (server.BASE / 'ecop-logo.jpg').read_bytes(), 'image/jpeg')
     if method == 'GET' and path == '/api/status':
         try:
             tools = server.rpc('tools/list')['tools']

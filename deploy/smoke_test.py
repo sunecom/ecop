@@ -30,10 +30,14 @@ def fetch(path, authenticated=True, body=None, extra=None):
         return exc.code, exc.read()
 
 
-for path in ['/', '/api/status', '/api/catalog', '/api/compounds?q=Water', '/api/calculate']:
+for path in ['/', '/ecop-logo.jpg', '/api/status', '/api/catalog', '/api/compounds?q=Water',
+             '/api/calculate']:
     assert fetch(path, authenticated=False)[0] == 401
 status, page = fetch('/')
 assert status == 200
+assert b'/ecop-logo.jpg' in page
+status, logo = fetch('/ecop-logo.jpg')
+assert status == 200 and logo.startswith(b'\xff\xd8') and len(logo) > 30000
 nonce = re.search(r"const NONCE=['\"]([^'\"]+)", page.decode())
 if nonce is None:
     nonce = re.search(r"['\"]X-Demo-Token['\"]\s*:\s*['\"]([^'\"]+)", page.decode())

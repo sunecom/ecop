@@ -56,7 +56,8 @@ def request(path='/', method='GET', authenticated=True, origin=None, nonce=None,
 
 class CloudTests(unittest.TestCase):
     def test_auth_all_business_routes(self):
-        for path in ['/', '/logo.png', '/api/status', '/api/catalog', '/api/compounds', '/api/calculate']:
+        for path in ['/', '/logo.png', '/ecop-logo.jpg', '/api/status', '/api/catalog', '/api/compounds',
+                     '/api/calculate']:
             self.assertTrue(request(path, authenticated=False)[0].startswith('401'))
 
     def test_health_and_page(self):
@@ -64,7 +65,11 @@ class CloudTests(unittest.TestCase):
         status, body = request()
         self.assertTrue(status.startswith('200'))
         self.assertIn('云端受控验证'.encode(), body)
+        self.assertIn(b'/ecop-logo.jpg', body)
         self.assertNotIn(b'__NONCE__', body)
+        logo_status, logo = request('/ecop-logo.jpg')
+        self.assertTrue(logo_status.startswith('200'))
+        self.assertTrue(logo.startswith(b'\xff\xd8'))
         self.assertTrue(request(host='evil.example')[0].startswith('400'))
 
     def test_cross_site_blocked(self):

@@ -334,6 +334,8 @@ class Handler(BaseHTTPRequestHandler):
                       .replace('__NONCE__', NONCE).encode(), 'text/html; charset=utf-8')
         elif parsed.path == '/logo.png':
             self.send(200, (BASE / 'logo.png').read_bytes(), 'image/png')
+        elif parsed.path == '/ecop-logo.jpg':
+            self.send(200, (BASE / 'ecop-logo.jpg').read_bytes(), 'image/jpeg')
         elif parsed.path == '/api/status':
             try:
                 tools = rpc('tools/list')['tools']
