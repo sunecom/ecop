@@ -52,6 +52,10 @@ def main():
     authorization = 'Basic ' + base64.b64encode(f'{args.user}:{password}'.encode()).decode()
     base = args.base.rstrip('/')
 
+    def header_value(headers, name):
+        target = name.casefold()
+        return next((value for key, value in headers.items() if key.casefold() == target), None)
+
     def fetch(path, authenticated=True, payload=None, origin=None, nonce=None, method=None):
         body = None if payload is None else json.dumps(payload, allow_nan=False).encode()
         headers = {'Authorization': authorization} if authenticated else {}
@@ -105,9 +109,10 @@ def main():
         for export in previous['exports']:
             status, body, headers = fetch('/api/exports/' + export['id'])
             digest = hashlib.sha256(body).hexdigest()
-            if status != 200 or digest != export['sha256'] or headers.get('X-Content-Sha256') != digest:
+            if (status != 200 or digest != export['sha256'] or
+                    header_value(headers, 'X-Content-SHA256') != digest):
                 raise AssertionError({'export': export, 'status': status, 'digest': digest,
-                                      'header': headers.get('X-Content-Sha256')})
+                                      'header': header_value(headers, 'X-Content-SHA256')})
             verified_exports.append({'id': export['id'], 'sha256': digest, 'bytes': len(body)})
         evidence = {
             'schema_version': '1.0', 'stage': 'P3-persistence-after-recreate',
@@ -167,7 +172,7 @@ def main():
             digest = hashlib.sha256(body).hexdigest()
             if status != 200 or digest != export['sha256']:
                 raise AssertionError({'export': export, 'status': status, 'digest': digest})
-            if headers.get('X-Content-Sha256') != digest:
+            if header_value(headers, 'X-Content-SHA256') != digest:
                 raise AssertionError('Download checksum header mismatch')
             ET.fromstring(body)
             exports.append({'id': export['id'], 'run_id': record['run_id'],
@@ -222,4 +227,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

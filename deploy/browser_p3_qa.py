@@ -58,9 +58,12 @@ def main():
         if desktop_overflow > 1:
             raise AssertionError(f'Desktop horizontal overflow: {desktop_overflow}px')
 
+        previous_project_id = page.locator('#projectSelect').input_value()
         page.locator('#projectName').fill('P3 Chrome 持久化项目')
         page.locator('#projectCreate').click()
-        page.wait_for_function("document.getElementById('projectSelect').value.startsWith('prj_')")
+        page.wait_for_function(
+            "previous => document.getElementById('projectSelect').value.startsWith('prj_') && document.getElementById('projectSelect').value !== previous",
+            arg=previous_project_id)
         project_id = page.locator('#projectSelect').input_value()
         page.locator('#caseName').fill('Chrome 蒸发版本')
         page.locator('#caseCreate').click()
