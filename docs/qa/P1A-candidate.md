@@ -90,7 +90,7 @@ python deploy/browser_p1a_qa.py --base http://127.0.0.1:18766 --user ecop --pass
 
 ## HOLD 与回退
 
-- 总控首次独立候选复核：`REWORK`；`P1A-R01` 修复候选待复核。
-- 正式站部署：`HOLD`；本轮不将候选结果写入生产卷。
+- 总控首次独立候选复核：`REWORK`；修订候选复核：`PASS`，`P1A-R01` 已关闭。
+- 正式站部署：已按审计提交和固定镜像完成，发布记录见 `docs/qa/P1A-release-2026-09-18.md`。
 - P1B 压缩机、换热器、气液分离器：`HOLD`。
 - 候选回退只需删除 `ecop-p1a-web`、`ecop-p1a-dwsim`、`ecop-p1a-net` 和独立候选数据卷；不操作生产 Compose。
