@@ -1,6 +1,18 @@
 # P3 隔离候选验收记录
 
-## 候选身份与隔离
+## R01 当前候选（2026-09-19）
+
+- 当前源码提交 `9bc2685decf9e88e990eb72bf2d7b7e259ab040f`，源码包 `.local/qa/P3-R01/p3-r01-source-9bc2685.tar.gz`，SHA-256 `a8366049c4e77ed7884c8d0ab1cda28b2740b655d900b447851f2dfd3d75cf66`。
+- 远端目录 `/opt/ecop-candidates/p3-r01-9bc2685`，Compose project 继续使用 `ecop-p3`，候选复测地址为 `http://127.0.0.1:18769`。仅候选 Basic Auth 凭据已轮换，受限文件位于 `/opt/ecop-candidates/p3-r01-9bc2685/deploy/secrets/ecop_password.txt`；文档和证据不保存凭据内容。
+- Web 镜像 ID `sha256:cba2cb14d987ba0244f9874cd48edd3d09dfa48137956023df45a20a5b42c886`，健康启动时间 `2026-09-18T19:13:13.44505557Z`。DWSIM 镜像 ID 仍为 `sha256:ce00bf065a3d5f1160d24934527b45822a22a3020745ff5a4ce1ffb7b796cacf`，启动时间仍为 `2026-09-18T18:03:16.903529114Z`，本次切换未重启 DWSIM。
+- 切换前后继续复用 `ecop-p3_projects`、`ecop-p3_runs`。切换前数据库计数为项目/版本/记录 `7/15/14`，切换后保持 `7/15/14`；新增一笔 R01 真实计算后为 `8/16/15`。
+- 原项目 `prj_1a7a935f7a404a678de2c3800511dd2a` 的 3 个 run 和 3 个导出哈希全部保留；总控项目 `prj_eefbadd0e1db4234beeedc34d82f116a` 与 Chrome 项目 `prj_084c4aeb46b44566a1f95e1ea13b3e2d` 均可重新打开，分别保留 3 条和 2 条记录。
+- R01 真实计算项目 `prj_1ac1221972d642a3a05ec87c472790b4`，run `3b8fc459fb13465892f0125d4410a6d2`；输入为 `1000 kg/h`、`25 °C`、`101.325 kPa`、目标汽化 `37%`，DWSIM 10.2.8 返回热负荷 `319.16152778044335 kW`。导出 XML 可解析，SHA-256 `3472a64e9c721f39c558267bbf0eabb209c5491a891e554c03bb45b0f7422fcc`。
+- 项目计算只写 SQLite 和受控导出，不再生成 `/data/runs/<run_id>.json`；该 run 的 SQLite 记录数为 1，legacy JSON 不存在。
+- 候选运行时迁移夹具首次为 `1 imported / 3 invalid`，第二次为 `4 skipped`；数据库触发器故障按 `IntegrityError` 传播且 `legacy_imports=0`，证明坏记录隔离和数据库故障不掩盖均生效。
+- 修复提交全量测试准确口径为 **55 总数 = 54 PASS + 1 SKIP**；故障日志来自受控负例。
+
+## 原候选基线与隔离
 
 - 本地证据根目录：`C:/Users/gao/.codex/worktrees/f815/ECOP企业方案agent/.local/qa/P3`；服务器证据根目录：`/opt/ecop-candidates/p3-bdb319e/.local/qa/P3`。浏览器与桌面子目录已完整镜像到服务器同名子目录。
 - 应用镜像代码提交：`bdb319eb9c6d4f6ae568319cdf92533fd9d06674`；配置与 QA 修正提交：`bb5e68d0c1cfe0b2b462b2b5ea0f7f42607e8d29`。
@@ -12,7 +24,7 @@
 
 ## 单元、API 与安全验证
 
-- 本地共 52 项测试，51 项通过、1 项真实引擎测试按设计跳过；故障日志来自受控负例。`project_ui.js` 通过 `node --check`，两份 P3 QA 脚本通过 `py_compile`，候选 `docker compose config --quiet` 通过。
+- 原候选本地共 52 项测试，51 项通过、1 项真实引擎测试按设计跳过；R01 修复提交现为 55 总数、54 项通过、1 项跳过。`project_ui.js` 通过 `node --check`，两份 P3 QA 脚本通过 `py_compile`，候选 `docker compose config --quiet` 通过。
 - API 项目 `prj_1a7a935f7a404a678de2c3800511dd2a` 创建不可变 30% 与 45% 目标汽化版本，真实 DWSIM run 分别为 `b566e77dc77646169b6b70dd708bb969`、`68d1e832d7ff445687124a9da76f9fe2`；泵不兼容对照为 `ad53b30970eb4286921c4ce2880ffa00`。
 - 两个兼容蒸发记录比较热负荷从 `275.2843465647 kW` 变为 `369.3068777413 kW`，差值 `94.0225311766 kW`；蒸发与泵比较返回 `409`。
 - 3 个导出均可下载、解析为 XML，正文 SHA-256 与数据库及 `X-Content-SHA256` 一致。非法 ID、路径穿越、错误 Origin、错误 nonce 和未认证请求均被拒绝。
@@ -54,9 +66,16 @@
 | `.local/qa/P3/browser/p3-project-mobile-390.png` | `55b8b7db7e4a27d32f506878c064f1143a68a1ce24a69796fb58c0125fbd75b1` |
 | `.local/qa/P3/desktop/p3-windows-automation-evidence.json` | `65f23439e2d4a838594a54591e24d86558af824e34a013583ce54eeb2b177112` |
 | `.local/qa/P3/desktop/p3-desktop-ui-blocker-evidence.json` | `a8e9d3a8a122cdafd27c95c0c2573206c2b8384f7966a0875a696b9ee9d31766` |
+| `.local/qa/P3-R01/pre-switch-state.json` | `fbc8e3c28ae1f2516a512c92b1cfabc6ed06490b54a4b91f51151fcf4e7ae984` |
+| `.local/qa/P3-R01/post-switch-state.json` | `a2d4489912e5a9d194288b515c1e722038f35b6837c92704356114d11e55b4c1` |
+| `.local/qa/P3-R01/final-state.json` | `37f12f0b4c88c017ae1126e814ada580f0d8deb58dc816a20ce2cc688df85917` |
+| `.local/qa/P3-R01/p3-r01-existing-persistence.json` | `589cab33daaec991d71b66b50f77461917458b66ec1116e99956036389896aa4` |
+| `.local/qa/P3-R01/p3-r01-smoke-evidence.json` | `3fecc8152a168beaea23eff1df5ea9f4b79767eab757b850ceda1e51673b960e` |
+| `.local/qa/P3-R01/p3-r01-migration-evidence.json` | `27c019931d8cb60d7d1fe71bbc59c47ce7b5582a6fe910e2688bd54399632362` |
+| `.local/qa/P3-R01/p3-r01-retained-projects.json` | `f488b8d26e427bc9ddf43e49f8f58d011fa23677007f9c97be70907fb81597e0` |
 
 ## 门禁结论
 
-- 项目保存、不可变版本、真实计算、受控 DWSIM 导出、比较保护、迁移幂等、Web 重建持久化、在线备份/全新卷恢复和浏览器响应式流程均通过当前候选自检。
+- 项目保存、不可变版本、真实计算、受控 DWSIM 导出、比较保护、迁移坏记录隔离、迁移幂等、数据库故障传播、Web 重建持久化、在线备份/全新卷恢复和浏览器响应式流程均通过 R01 当前候选自检。
 - 桌面 Automation 只能作为补充一致性证据；因 Computer Use 运行时缺包，真实桌面 UI 的重算、UI 改参和另存尚未完成。
 - P3 候选整体状态为 **HOLD / DESKTOP UI BLOCKED**。不申请生产发布，不把本记录当作总控独立 PASS。
