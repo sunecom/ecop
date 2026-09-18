@@ -191,7 +191,7 @@ def save_result(result):
         serialized, encoding='utf-8')
 
 
-def calculate(data):
+def calculate(data, export_path=None):
     values = validate(data)
     if not LOCK.acquire(blocking=False):
         raise ValueError('已有计算正在进行，请稍后再试')
@@ -232,6 +232,17 @@ def calculate(data):
         def tool(tool_name, **kwargs):
             return call(tool_name, flowsheet_id=flowsheet_id, **kwargs)
 
+        def save_export():
+            if export_path is None:
+                return
+            path = Path(export_path)
+            if not path.is_absolute() or path.suffix.lower() != '.dwxml':
+                raise RuntimeError('DWSIM 导出路径无效')
+            saved = tool('dwsim_flowsheet_save', filepath=str(path), compressed=False)
+            saved_path = Path(saved.get('saved', '')).resolve()
+            if saved_path != path.resolve() or not path.is_file() or path.stat().st_size <= 0:
+                raise RuntimeError('DWSIM 流程文件保存失败')
+
         if module != 'material_flash':
             tool('dwsim_thermo_add_compounds', names=['Water'])
         packages = tool('dwsim_thermo_list_property_packages')['property_packages']
@@ -265,6 +276,7 @@ def calculate(data):
             }
             if 'material_system' in workflow:
                 result['material_system'] = workflow['material_system']
+            save_export()
             save_result(result)
             return result
 
@@ -376,6 +388,7 @@ def calculate(data):
             'raw': {'feed': feed, 'product': product, 'unit': unit,
                     'check': check, 'solve': solved, 'applied': applied},
         }
+        save_export()
         save_result(result)
         return result
     finally:

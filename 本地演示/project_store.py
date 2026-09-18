@@ -340,9 +340,12 @@ class ProjectStore:
         with self._connect() as connection:
             row = self._version_row(connection, owner_id, version_id)
             records = self._record_rows(connection, version_id)
-        return self._version_dict(row['id'], row['case_id'], row['version_no'],
-                                  row['parent_version_id'], row['inputs_json'],
-                                  row['created_at'], records)
+        version = self._version_dict(row['id'], row['case_id'], row['version_no'],
+                                     row['parent_version_id'], row['inputs_json'],
+                                     row['created_at'], records)
+        version['project_id'] = row['project_id']
+        version['case_name'] = row['case_name']
+        return version
 
     @staticmethod
     def _record_rows(connection, version_id):
@@ -537,6 +540,9 @@ class ProjectStore:
         counts = {'imported': 0, 'skipped': 0, 'invalid': 0}
         if not runs_dir.is_dir():
             return counts
+        paths = sorted(runs_dir.glob('*.json'))
+        if not paths:
+            return counts
         with self._connect() as connection:
             row = connection.execute(
                 'SELECT id FROM projects WHERE owner_id=? AND legacy_key=?',
@@ -549,7 +555,7 @@ class ProjectStore:
                     INSERT INTO projects(id, owner_id, name, legacy_key, created_at, updated_at)
                     VALUES(?,?,?,'runs-v1',?,?)
                 ''', (legacy_project, owner_id, '历史记录迁移', timestamp, timestamp))
-        for path in sorted(runs_dir.glob('*.json')):
+        for path in paths:
             source_key = str(path.resolve()) + ':' + sha256_file(path)
             with self._connect() as connection:
                 if connection.execute(
