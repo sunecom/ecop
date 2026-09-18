@@ -30,7 +30,7 @@ def fetch(path, authenticated=True, body=None, extra=None):
         return exc.code, exc.read()
 
 
-for path in ['/', '/api/status', '/api/calculate']:
+for path in ['/', '/api/status', '/api/catalog', '/api/compounds?q=Water', '/api/calculate']:
     assert fetch(path, authenticated=False)[0] == 401
 status, page = fetch('/')
 assert status == 200
@@ -41,19 +41,57 @@ assert nonce, 'Missing page nonce'
 headers = {'Origin': origin, 'X-Demo-Token': nonce.group(1)}
 status, engine = fetch('/api/status')
 assert status == 200, engine
+status, catalog = fetch('/api/catalog')
+assert status == 200, catalog
+catalog = json.loads(catalog)
+assert catalog['counts']['mcp_tools'] == 48
+assert catalog['counts']['unit_operations'] == 44
+assert catalog['counts']['property_packages'] == 28
+assert catalog['counts']['compounds'] >= 1500
+assert catalog['counts']['live_workflows'] == 3
+assert sum(group['count'] for group in catalog['tool_groups']) == 48
+assert set(module['type'] for group in catalog['unit_groups'] for module in group['modules']
+           if module['state'] == 'live') == {'Heater', 'Cooler', 'Pump'}
+status, compounds = fetch('/api/compounds?q=Water')
+assert status == 200, compounds
+compounds = json.loads(compounds)
+assert 'Water' in compounds['matches'] and compounds['limit'] == 20
 records = []
-for flow in [1000, 2000]:
-    inputs = dict(flow_kg_h=flow, temperature_C=25, pressure_kPa=101.325, vapor_percent=30)
+cases = [
+    # Legacy payload intentionally omits module; it must remain the evaporation workflow.
+    dict(flow_kg_h=1000, temperature_C=25, pressure_kPa=101.325, vapor_percent=30),
+    dict(module='evaporation', flow_kg_h=1000, temperature_C=25,
+         pressure_kPa=101.325, vapor_percent=60),
+    dict(module='temperature', flow_kg_h=1000, inlet_temperature_C=25,
+         pressure_kPa=101.325, outlet_temperature_C=60),
+    dict(module='temperature', flow_kg_h=1000, inlet_temperature_C=60,
+         pressure_kPa=101.325, outlet_temperature_C=25),
+    dict(module='pump', flow_kg_h=1000, inlet_temperature_C=25,
+         inlet_pressure_kPa=101.325, outlet_pressure_kPa=500, efficiency_percent=75),
+    dict(module='pump', flow_kg_h=1000, inlet_temperature_C=25,
+         inlet_pressure_kPa=101.325, outlet_pressure_kPa=900, efficiency_percent=75),
+]
+for inputs in cases:
     status, result = fetch('/api/calculate', body=inputs, extra=headers)
     assert status == 200, result
     data = json.loads(result)
     r = data['results']
-    assert abs(r['vapor_kg_h'] - flow * 0.3) < 1e-5
-    assert abs(r['heat_duty_kW'] - 275.2843465647 * flow / 1000) < 0.01
-    assert abs(r['outlet_temperature_C'] - 99.9743) < 0.01
     assert abs(r['mass_residual_kg_h']) < 1e-5
-    records.append({k: data[k] for k in ['run_id', 'time', 'engine', 'commit', 'inputs', 'results']})
+    records.append({k: data[k] for k in ['run_id', 'time', 'module', 'engine', 'commit',
+                                         'inputs', 'results', 'comparison']})
+assert abs(records[0]['results']['vapor_kg_h'] - 300) < 1e-5
+assert records[0]['module']['id'] == 'evaporation'
+assert abs(records[0]['results']['heat_duty_kW'] - 275.2843465647) < 0.01
+assert abs(records[0]['results']['outlet_temperature_C'] - 99.9743) < 0.01
+assert records[1]['comparison']['value'] > records[0]['comparison']['value']
+assert records[2]['comparison']['value'] > 0
+assert records[3]['comparison']['value'] < 0
+assert abs(records[2]['results']['outlet_temperature_C'] - 60) < 0.02
+assert abs(records[3]['results']['outlet_temperature_C'] - 25) < 0.02
+assert abs(records[4]['results']['outlet_pressure_kPa'] - 500) < 0.02
+assert records[5]['comparison']['value'] > records[4]['comparison']['value']
 assert fetch('/api/calculate', body={}, extra=headers)[0] == 400
 assert fetch('/api/calculate', body=inputs, extra=dict(headers, Origin='https://evil.example'))[0] == 403
-print(json.dumps({'passed': True, 'checks': ['auth', 'page', 'engine', 'two_real_calculations',
-                                          'invalid_input', 'cross_origin'], 'runs': records}, indent=2))
+print(json.dumps({'passed': True, 'checks': ['auth', 'page', 'engine', 'catalog', 'compound_search',
+                                          'six_real_calculations', 'invalid_input', 'cross_origin'],
+                  'runs': records}, indent=2))

@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import server
 
@@ -53,6 +53,23 @@ def application(environ, start_response):
         except Exception:
             logging.exception('DWSIM status failed')
             return respond('503 Service Unavailable', {'ok': False, 'error': '计算引擎暂不可用'})
+    if method == 'GET' and path == '/api/catalog':
+        try:
+            return respond('200 OK', server.get_catalog())
+        except ValueError as exc:
+            return respond('409 Conflict', {'ok': False, 'error': str(exc)})
+        except Exception:
+            logging.exception('DWSIM catalog failed')
+            return respond('503 Service Unavailable', {'ok': False, 'error': '模块目录暂不可用'})
+    if method == 'GET' and path == '/api/compounds':
+        try:
+            query = parse_qs(environ.get('QUERY_STRING', '')).get('q', [''])[0]
+            return respond('200 OK', server.search_compounds(query))
+        except ValueError as exc:
+            return respond('400 Bad Request', {'ok': False, 'error': str(exc)})
+        except Exception:
+            logging.exception('DWSIM compound search failed')
+            return respond('503 Service Unavailable', {'ok': False, 'error': '组分目录暂不可用'})
     if method == 'POST' and path == '/api/calculate':
         if (environ.get('HTTP_ORIGIN') != ORIGIN or
                 not hmac.compare_digest(environ.get('HTTP_X_DEMO_TOKEN', '').encode(), server.NONCE.encode())):

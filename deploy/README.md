@@ -1,12 +1,12 @@
 # ECOP 云端受控演示 V0.1
 
-AiToMoney 为客户 ECOP 提供的纯水蒸发计算技术验证。域名 `ecop.aitomoney.online`，仓库 `https://github.com/sunecom/ecop.git`。
+AiToMoney 为客户 ECOP 提供的 DWSIM 工艺计算技术验证。域名 `ecop.aitomoney.online`，仓库 `https://github.com/sunecom/ecop.git`。
 
 ## 部署边界
 
-本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。此版本无多租户、任务队列、持久化账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
+本地 `本地演示/server.py` 入口保留；云端通过 `cloud_app.py` 和 Gunicorn 服务。Web 只有一个 worker，四个线程；进程内锁串行调用一个 DWSIM 引擎。**不要直接增加 worker 或复制 Web 容器共享引擎**。已接入目标汽化、出口温度加热/冷却和泵升压三类纯水工作流。此版本无多租户、任务队列、持久化账户体系，也不是板式蒸发器选型、多效或 MVR 工程设计系统。
 
-所有页面及业务 API 使用 Basic Auth；应用内仅 `/healthz` 返回无敏感内容的存活状态，生产 Nginx 可选择不公开该路径。计算 POST 另验证同源 Origin 和页面 nonce。MCP token 不传至浏览器，MCP 不映射宿主端口、无公网路由。Web 同时接入普通 `edge` 网络和隔离的 `engine` 网络，宿主端口仅监听 `127.0.0.1:18765`；DWSIM 只接入 `engine`。两个容器将 `HOME` 指向可写的 `/tmp`；DWSIM 以 UID/GID 10001 读取只读 secret，并在 token 为空时拒绝启动。所有登录账户共享同一演示空间。
+所有页面及业务 API 使用 Basic Auth；应用内仅 `/healthz` 返回无敏感内容的存活状态，生产 Nginx 可选择不公开该路径。计算 POST 另验证同源 Origin 和页面 nonce。只读 `/api/catalog` 仅执行固定的工具清单、设备类型、物性包和组分目录查询并缓存结果；`/api/compounds?q=` 只在缓存目录中返回前 20 个匹配名称。两者均不接受任意 MCP 工具名或参数。MCP token 不传至浏览器，MCP 不映射宿主端口、无公网路由。Web 同时接入普通 `edge` 网络和隔离的 `engine` 网络，宿主端口仅监听 `127.0.0.1:18765`；DWSIM 只接入 `engine`。两个容器将 `HOME` 指向可写的 `/tmp`；DWSIM 以 UID/GID 10001 读取只读 secret，并在 token 为空时拒绝启动。所有登录账户共享同一演示空间。
 
 ## 固定引擎
 
