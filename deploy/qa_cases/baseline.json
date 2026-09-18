@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "stage": "G0",
+  "engine": "DWSIM 10.2.8",
+  "engine_reference": "image:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36",
+  "application_baseline": "2c8ad85da2da69757d7edc1d3d5fcb84f1112ccb",
+  "tolerances": {
+    "mass_residual_abs_kg_h": 0.000001,
+    "target_temperature_abs_C": 0.02,
+    "target_pressure_abs_kPa": 0.02,
+    "target_vapor_fraction_abs": 0.00001,
+    "reference_metric_rel": 0.000001
+  },
+  "cases": [
+    {
+      "id": "EVAP-30",
+      "payload": {"flow_kg_h": 1000, "temperature_C": 25, "pressure_kPa": 101.325, "vapor_percent": 30},
+      "comparison_metric": "heat_duty_kW",
+      "expected": {"heat_duty_kW": 275.28434656470915, "vapor_kg_h": 300.0, "outlet_temperature_C": 99.9743}
+    },
+    {
+      "id": "EVAP-60",
+      "payload": {"module": "evaporation", "flow_kg_h": 1000, "temperature_C": 25, "pressure_kPa": 101.325, "vapor_percent": 60},
+      "comparison_metric": "heat_duty_kW",
+      "expected": {"heat_duty_kW": 463.32940891785563, "vapor_kg_h": 600.0, "outlet_temperature_C": 99.9743}
+    },
+    {
+      "id": "TEMP-HEAT",
+      "payload": {"module": "temperature", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "outlet_temperature_C": 60},
+      "comparison_metric": "heat_duty_kW",
+      "expected": {"heat_duty_kW": 40.637067457321564, "outlet_temperature_C": 60.0, "outlet_vapor_fraction": 0.0}
+    },
+    {
+      "id": "TEMP-COOL",
+      "payload": {"module": "temperature", "flow_kg_h": 1000, "inlet_temperature_C": 60, "pressure_kPa": 101.325, "outlet_temperature_C": 25},
+      "comparison_metric": "heat_duty_kW",
+      "expected": {"heat_duty_kW": -40.637067448013575, "outlet_temperature_C": 25.0, "outlet_vapor_fraction": 0.0}
+    },
+    {
+      "id": "PUMP-500",
+      "payload": {"module": "pump", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 101.325, "outlet_pressure_kPa": 500, "efficiency_percent": 75},
+      "comparison_metric": "shaft_power_kW",
+      "expected": {"shaft_power_kW": 0.14809459987373055, "outlet_pressure_kPa": 500.0, "calculated_efficiency_percent": 75.0}
+    },
+    {
+      "id": "PUMP-900",
+      "payload": {"module": "pump", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 101.325, "outlet_pressure_kPa": 900, "efficiency_percent": 75},
+      "comparison_metric": "shaft_power_kW",
+      "expected": {"shaft_power_kW": 0.296681371245321, "outlet_pressure_kPa": 900.0, "calculated_efficiency_percent": 75.0}
+    }
+  ],
+  "negative_cases": [
+    {"id": "EMPTY", "expected_status": 400, "payload": {}},
+    {"id": "BOOL-FLOW", "expected_status": 400, "payload": {"module": "evaporation", "flow_kg_h": true, "temperature_C": 25, "pressure_kPa": 101.325, "vapor_percent": 30}},
+    {"id": "TEMP-NO-DELTA", "expected_status": 400, "payload": {"module": "temperature", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "outlet_temperature_C": 25}},
+    {"id": "PUMP-NO-RISE", "expected_status": 400, "payload": {"module": "pump", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 500, "efficiency_percent": 75}},
+    {"id": "UNSUPPORTED", "expected_status": 400, "payload": {"module": "mixer"}},
+    {"id": "PHASE-BOUND-PUMP", "expected_status": 400, "payload": {"module": "pump", "flow_kg_h": 1000, "inlet_temperature_C": 81, "inlet_pressure_kPa": 100, "outlet_pressure_kPa": 500, "efficiency_percent": 75}}
+  ],
+  "observed_g0": {
+    "captured_at_epoch": 1789733053,
+    "raw_evidence_sha256": "D8F1DF97D1F0BE22F01165BDA9A29AD071D191FCD1F2188D58365FA3EE62B822",
+    "raw_evidence_bytes": 16908,
+    "runs": [
+      {"id": "EVAP-30", "run_id": "142db45b26bf48adba7c564af7a1d666", "heat_duty_kW": 275.28434656470915, "outlet_temperature_C": 99.97430000048058, "vapor_kg_h": 300.00000000000017, "mass_residual_kg_h": 0.0},
+      {"id": "EVAP-60", "run_id": "f1b7b9de1eb9450e857b96bdeb47c37e", "heat_duty_kW": 463.32940891785563, "outlet_temperature_C": 99.97430000048058, "vapor_kg_h": 600.0000000000001, "mass_residual_kg_h": 0.0},
+      {"id": "TEMP-HEAT", "run_id": "2b86d9120b6d4beca28b05c7a2343d3d", "heat_duty_kW": 40.637067457321564, "outlet_temperature_C": 59.99999998901626, "outlet_vapor_fraction": 0.0, "mass_residual_kg_h": 0.0},
+      {"id": "TEMP-COOL", "run_id": "0d096211d89647fbb44acd2d0f27cf42", "heat_duty_kW": -40.637067448013575, "outlet_temperature_C": 25.000000018998776, "outlet_vapor_fraction": 0.0, "mass_residual_kg_h": 0.0},
+      {"id": "PUMP-500", "run_id": "d2b5bb66ba804d8596ac8daefb3d5c9c", "shaft_power_kW": 0.14809459987373055, "outlet_pressure_kPa": 500.0, "calculated_efficiency_percent": 74.99998885477461, "mass_residual_kg_h": 0.0},
+      {"id": "PUMP-900", "run_id": "e4c8028c0b9d4e7c9628d9d126a7fffd", "shaft_power_kW": 0.296681371245321, "outlet_pressure_kPa": 900.0, "calculated_efficiency_percent": 74.99999448101975, "mass_residual_kg_h": 0.0}
+    ],
+    "negative_statuses": {"EMPTY": 400, "BOOL-FLOW": 400, "TEMP-NO-DELTA": 400, "PUMP-NO-RISE": 400, "UNSUPPORTED": 400, "PHASE-BOUND-PUMP": 400},
+    "security_statuses": {"WRONG-ORIGIN": 403, "WRONG-NONCE": 403, "GET-CALCULATE": 404, "WRONG-PASSWORD": 401}
+  }
+}

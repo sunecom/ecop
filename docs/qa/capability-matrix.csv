@@ -1,0 +1,45 @@
+group_code,group,module,name,actual_tools_or_api,material_phase,inputs,outputs,status,self_check,independent_review,evidence
+A,传热流体与储运,Mixer,混合器,"dwsim_unitop_add/connect/get_results; /api/calculate 未接入",纯水单液相,"2路入口: K,Pa,kg/s",出口温度压力流量与焓,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Mixer
+A,传热流体与储运,Splitter,分流器,"dwsim_unitop_add/connect/set/get_results; OperationMode=SplitRatios; SR1",纯水单液相,"1路入口: K,Pa,kg/s; 分流比: fraction",两路出口流量与状态,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Splitter
+A,传热流体与储运,Heater,加热器,"/api/calculate: evaporation|temperature; dwsim_unitop_*",纯水液相/汽液平衡,"kg/h,°C,kPa(a),%",热负荷kW与出口状态,已接入可运行,PASS-3-real-runs,PENDING-total-control,g0-production-runs.json#EVAP-30|EVAP-60|TEMP-HEAT
+A,传热流体与储运,Cooler,冷却器,"/api/calculate: temperature; dwsim_unitop_*",纯水单液相,"kg/h,°C,kPa(a)",净吸热kW与出口状态,已接入可运行,PASS-1-real-run,PENDING-total-control,g0-production-runs.json#TEMP-COOL
+A,传热流体与储运,Pump,泵,"/api/calculate: pump; dwsim_unitop_*",纯水单液相,"kg/h,°C,kPa(a),%",轴功率kW与出口状态,已接入可运行,PASS-2-real-runs,PENDING-total-control,g0-production-runs.json#PUMP-500|PUMP-900
+A,传热流体与储运,Compressor,压缩机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,Expander,膨胀机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,Valve,阀门,"dwsim_unitop_add/connect/set/get_results; CalcMode=OutletPressure; OutletPressure",纯水单液相,"K,Pa,kg/s; 出口Pa",出口温度压力流量与焓,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Valve
+A,传热流体与储运,Pipe,管段,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,HeatExchanger,换热器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,Tank,储罐,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,Vessel,容器/闪蒸罐,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+A,传热流体与储运,OrificePlate,孔板,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,ComponentSeparator,组分分离器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,Filter,过滤器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,SolidsSeparator,固体分离器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,ShortcutColumn,简捷精馏塔,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,DistillationColumn,严格精馏塔,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,AbsorptionColumn,吸收塔,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,Centrifuge,离心机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,Chromatography,色谱分离,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,CrossflowUF,错流超滤/洗滤,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+B,分离膜与塔器,Crystallizer,结晶器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,ConversionReactor,转化率反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,EquilibriumReactor,平衡反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,GibbsReactor,Gibbs反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,CSTR,全混流反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,PFR,平推流反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,ReaktoroGibbsReactor,Reaktoro Gibbs反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,BioReactor,生物反应器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,AnaerobicDigester,厌氧消化器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,CFBFastPyrolysis,循环流化床快速热解,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,Pretreatment,原料预处理,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,BiogasUpgrader,沼气提纯,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+C,反应生化与资源化,CellLysis,细胞裂解,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+D,清洁能源,WindTurbine,风力机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+D,清洁能源,HydroelectricTurbine,水轮机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+D,清洁能源,SolarPanel,光伏组件,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+D,清洁能源,WaterElectrolyzer,水电解槽,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+D,清洁能源,PEMFuelCell,PEM燃料电池,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+E,流程逻辑与收敛,Recycle,物料循环,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+E,流程逻辑与收敛,EnergyRecycle,能量循环,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+E,流程逻辑与收敛,Spec,设计规格,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
+E,流程逻辑与收敛,Adjust,变量调节,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
