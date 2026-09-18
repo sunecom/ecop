@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -170,9 +171,10 @@ class CloudTests(unittest.TestCase):
         case = json.loads(body)['case']
         version = case['versions'][0]
 
-        def fake_calculate(inputs, export_path=None):
+        def fake_calculate(inputs, export_path=None, persist_result=True):
             self.assertEqual(inputs, SAMPLE)
             self.assertIsNotNone(export_path)
+            self.assertFalse(persist_result)
             Path(export_path).write_text('<DWSIM project="p3" />', encoding='utf-8')
             return {
                 'run_id': '1' * 32, 'time': '2026-09-19 03:00:00',
@@ -232,7 +234,8 @@ class CloudTests(unittest.TestCase):
             f"/api/projects/{project['id']}/cases", 'POST',
             payload={'name': '失败工况', 'inputs': SAMPLE}, **write_headers)[1])['case']
 
-        def fail_after_partial(inputs, export_path=None):
+        def fail_after_partial(inputs, export_path=None, persist_result=True):
+            self.assertFalse(persist_result)
             Path(export_path).write_text('<partial>', encoding='utf-8')
             raise RuntimeError('PRIVATE_EXPORT_PATH')
 
@@ -244,6 +247,47 @@ class CloudTests(unittest.TestCase):
         self.assertNotIn(b'PRIVATE_EXPORT_PATH', body)
         export_files = list(Path(os.environ['ECOP_PROJECTS_DIR']).rglob('*.dwxml'))
         self.assertEqual([path for path in export_files if path.read_text() == '<partial>'], [])
+
+    def test_project_database_failure_leaves_no_legacy_run_or_export(self):
+        write_headers = {'origin': cloud_app.ORIGIN, 'nonce': cloud_app.server.NONCE}
+        project = json.loads(request(
+            '/api/projects', 'POST', payload={'name': '数据库故障项目'},
+            **write_headers)[1])['project']
+        case = json.loads(request(
+            f"/api/projects/{project['id']}/cases", 'POST',
+            payload={'name': '数据库故障工况', 'inputs': SAMPLE}, **write_headers)[1])['case']
+        run_id = '2' * 32
+        exports_before = set(Path(os.environ['ECOP_PROJECTS_DIR']).rglob('*.dwxml'))
+
+        def calculated_but_not_persisted(inputs, export_path=None, persist_result=True):
+            self.assertEqual(inputs, SAMPLE)
+            self.assertFalse(persist_result)
+            Path(export_path).write_text('<DWSIM calculated="true" />', encoding='utf-8')
+            return {
+                'run_id': run_id, 'time': '2026-09-19 04:00:00',
+                'module': {'id': 'evaporation', 'name': '目标汽化计算',
+                           'unit_operation': 'Heater'},
+                'inputs': SAMPLE, 'engine': 'DWSIM 10.2.8', 'commit': 'test-build',
+                'property_package': 'Steam Tables (IAPWS-IF97)',
+                'results': {'heat_duty_kW': 200.0},
+                'comparison': {'metric': 'heat_duty_kW', 'label': '热负荷',
+                               'unit': 'kW', 'value': 200.0},
+                'raw': {'solve': {'ok': True}},
+            }
+
+        with patch.object(cloud_app.server, 'calculate', side_effect=calculated_but_not_persisted), \
+                patch.object(cloud_app.PROJECT_STORE, 'record_calculation',
+                             side_effect=sqlite3.OperationalError('injected database fault')):
+            status, body = request(
+                f"/api/case-versions/{case['versions'][0]['id']}/calculate", 'POST',
+                payload={}, **write_headers)
+
+        self.assertTrue(status.startswith('502'), body)
+        self.assertFalse((cloud_app.server.RUNS / f'{run_id}.json').exists())
+        self.assertEqual(set(Path(os.environ['ECOP_PROJECTS_DIR']).rglob('*.dwxml')),
+                         exports_before)
+        opened = json.loads(request(f"/api/projects/{project['id']}")[1])['project']
+        self.assertEqual(opened['cases'][0]['versions'][0]['records'], [])
 
     def test_server_saves_dwsim_export_before_flowsheet_close(self):
         calls = []
@@ -277,6 +321,7 @@ class CloudTests(unittest.TestCase):
             self.assertEqual(export_path.read_text(encoding='utf-8'), '<DWSIM saved="true" />')
             self.assertLess(calls.index('dwsim_flowsheet_save'),
                             calls.index('dwsim_flowsheet_close'))
+            self.assertTrue((Path(directory) / 'runs' / f"{result['run_id']}.json").is_file())
 
     @unittest.skipUnless(REAL, 'Pass --real-engine to use existing local DWSIM')
     def test_real_engine(self):

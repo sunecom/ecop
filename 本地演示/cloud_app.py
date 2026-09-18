@@ -203,7 +203,8 @@ def application(environ, start_response):
                 raise ValueError('项目计算不接受临时参数，请先创建新版本')
             version = PROJECT_STORE.get_version(OWNER_ID, calculate_match.group(1))
             export = PROJECT_STORE.prepare_export(OWNER_ID, version['project_id'])
-            result = server.calculate(version['inputs'], export_path=export['path'])
+            result = server.calculate(
+                version['inputs'], export_path=export['path'], persist_result=False)
             record = PROJECT_STORE.record_calculation(
                 OWNER_ID, version['id'], result, export)
             return respond('200 OK', {'ok': True, 'record': record})

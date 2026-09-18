@@ -202,7 +202,7 @@ def save_result(result):
         serialized, encoding='utf-8')
 
 
-def calculate(data, export_path=None):
+def calculate(data, export_path=None, persist_result=True):
     values = validate(data)
     if not LOCK.acquire(blocking=False):
         raise ValueError('已有计算正在进行，请稍后再试')
@@ -288,7 +288,8 @@ def calculate(data, export_path=None):
             if 'material_system' in workflow:
                 result['material_system'] = workflow['material_system']
             save_export()
-            save_result(result)
+            if persist_result:
+                save_result(result)
             return result
 
         tool('dwsim_stream_add_material', name='FEED', temperature_K=inlet_temperature + 273.15,
@@ -400,7 +401,8 @@ def calculate(data, export_path=None):
                     'check': check, 'solve': solved, 'applied': applied},
         }
         save_export()
-        save_result(result)
+        if persist_result:
+            save_result(result)
         return result
     finally:
         if flowsheet_id:

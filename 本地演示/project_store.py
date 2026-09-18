@@ -89,6 +89,48 @@ def _json_text(value, limit: int, label: str) -> str:
     return serialized
 
 
+def _required_text(mapping: dict, key: str, label: str, limit: int = 256) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value.strip() or len(value) > limit:
+        raise ValueError(f'旧记录{label}无效')
+    return value.strip()
+
+
+def _legacy_record_values(data):
+    result_json = _json_text(data, RESULT_LIMIT, '旧计算记录')
+    module = data.get('module')
+    inputs = data.get('inputs')
+    results = data.get('results')
+    comparison = data.get('comparison')
+    if not isinstance(module, dict):
+        raise ValueError('旧记录模块格式无效')
+    if not isinstance(inputs, dict):
+        raise ValueError('旧记录输入格式无效')
+    if not isinstance(results, dict):
+        raise ValueError('旧记录结果格式无效')
+    if not isinstance(comparison, dict):
+        raise ValueError('旧记录比较字段格式无效')
+    run_id = _validate_id(data.get('run_id'), 'run')
+    module_id = _required_text(module, 'id', '模块 ID', 80)
+    module_name = _required_text(module, 'name', '模块名称', NAME_LIMIT)
+    _required_text(module, 'unit_operation', '设备类型', 128)
+    if _required_text(inputs, 'module', '输入模块 ID', 80) != module_id:
+        raise ValueError('旧记录模块与输入不一致')
+    _required_text(data, 'property_package', '物性包', 256)
+    _required_text(comparison, 'metric', '比较指标', 128)
+    _required_text(comparison, 'unit', '比较单位', 80)
+    value = comparison.get('value')
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError('旧记录比较值无效')
+    engine = _required_text(data, 'engine', '引擎版本', 128)
+    build = _required_text(data, 'commit', '引擎构建', 256)
+    timestamp = data.get('time')
+    if timestamp is not None and (not isinstance(timestamp, str) or not timestamp.strip()):
+        raise ValueError('旧记录时间无效')
+    inputs_json = _json_text(inputs, INPUT_LIMIT, '旧工况输入')
+    return result_json, run_id, inputs_json, engine, build, module_name, timestamp
+
+
 class ProjectStore:
     def __init__(self, db_path: Path | str, export_root: Path | str):
         self.db_path = Path(db_path).resolve()
@@ -569,14 +611,8 @@ class ProjectStore:
                     continue
             try:
                 data = json.loads(path.read_text(encoding='utf-8'))
-                result_json = _json_text(data, RESULT_LIMIT, '旧计算记录')
-                run_id = _validate_id(data.get('run_id'), 'run')
-                inputs_json = _json_text(data.get('inputs'), INPUT_LIMIT, '旧工况输入')
-                engine = str(data.get('engine', '')).strip()
-                build = str(data.get('commit', '')).strip()
-                if not engine or not build:
-                    raise ValueError('旧记录缺少引擎版本')
-                module_name = str((data.get('module') or {}).get('name') or '历史工况')
+                (result_json, run_id, inputs_json, engine, build,
+                 module_name, recorded_at) = _legacy_record_values(data)
                 case_name = _validate_name(f'{module_name} {run_id[:8]}')
                 with self._connect() as connection:
                     connection.execute('BEGIN IMMEDIATE')
@@ -602,7 +638,7 @@ class ProjectStore:
                                                         engine_version, engine_build, created_at)
                         VALUES(?,?,?,?,?,?)
                     ''', (run_id, version_id, result_json, engine, build,
-                          str(data.get('time') or timestamp)))
+                          recorded_at or timestamp))
                     connection.execute('''
                         INSERT INTO legacy_imports(source_key, owner_id, status, run_id, imported_at)
                         VALUES(?,?,'imported',?,?)
@@ -610,7 +646,7 @@ class ProjectStore:
                     connection.execute('UPDATE projects SET updated_at=? WHERE id=?',
                                        (timestamp, legacy_project))
                 counts['imported'] += 1
-            except (OSError, UnicodeError, json.JSONDecodeError, ValueError, sqlite3.DatabaseError):
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
                 with self._connect() as connection:
                     connection.execute('''
                         INSERT OR IGNORE INTO legacy_imports(

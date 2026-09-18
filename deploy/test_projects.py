@@ -154,6 +154,56 @@ class ProjectStoreTests(unittest.TestCase):
         detail = reopened.get_project(self.owner, legacy['id'])
         self.assertEqual(detail['cases'][0]['versions'][0]['records'][0]['run_id'], 'f' * 32)
 
+    def test_legacy_migration_rejects_nested_damage_and_continues(self):
+        runs = Path(self.temp.name) / 'damaged-runs'
+        runs.mkdir()
+        damaged = []
+        for index, module_value in enumerate(('damaged-module', ['evaporation']), start=1):
+            record = result(str(index) * 32)
+            record['module'] = module_value
+            damaged.append(record)
+        damaged_inputs = result('3' * 32)
+        damaged_inputs['inputs'] = ['not', 'an', 'object']
+        damaged.append(damaged_inputs)
+        for index, record in enumerate(damaged):
+            (runs / f'{index:02d}-bad.json').write_text(
+                json.dumps(record, ensure_ascii=False), encoding='utf-8')
+        (runs / '99-good.json').write_text(
+            json.dumps(result('4' * 32), ensure_ascii=False), encoding='utf-8')
+
+        first = self.store.migrate_legacy_runs(self.owner, runs)
+        second = self.store.migrate_legacy_runs(self.owner, runs)
+
+        self.assertEqual(first, {'imported': 1, 'skipped': 0, 'invalid': 3})
+        self.assertEqual(second, {'imported': 0, 'skipped': 4, 'invalid': 0})
+        legacy = next(item for item in self.store.list_projects(self.owner)
+                      if item['name'] == '历史记录迁移')
+        detail = self.store.get_project(self.owner, legacy['id'])
+        run_ids = [record['run_id'] for case in detail['cases']
+                   for version in case['versions'] for record in version['records']]
+        self.assertEqual(run_ids, ['4' * 32])
+
+    def test_legacy_migration_does_not_mask_database_failures(self):
+        runs = Path(self.temp.name) / 'database-fault-runs'
+        runs.mkdir()
+        run_id = '5' * 32
+        (runs / 'valid.json').write_text(
+            json.dumps(result(run_id), ensure_ascii=False), encoding='utf-8')
+        with closing(sqlite3.connect(self.store.db_path)) as connection:
+            connection.execute(f'''
+                CREATE TRIGGER injected_legacy_database_fault
+                BEFORE INSERT ON calculation_records
+                WHEN NEW.run_id='{run_id}'
+                BEGIN SELECT RAISE(ABORT, 'injected database fault'); END;
+            ''')
+            connection.commit()
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.store.migrate_legacy_runs(self.owner, runs)
+        with closing(sqlite3.connect(self.store.db_path)) as connection:
+            imported = connection.execute(
+                'SELECT COUNT(*) FROM legacy_imports').fetchone()[0]
+        self.assertEqual(imported, 0)
+
     def test_online_backup_opens_with_same_counts(self):
         self.create_version()
         backup_path = Path(self.temp.name) / 'backup' / 'projects.sqlite3'
