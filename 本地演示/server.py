@@ -166,10 +166,22 @@ def vapor_fraction(stream):
                 if phase['name'].lower() == 'vapor')
 
 
+def strict_json_text(data, indent=None):
+    try:
+        return json.dumps(data, ensure_ascii=False, allow_nan=False, indent=indent)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError('计算结果包含不可序列化或非有限数值') from exc
+
+
+def strict_json_bytes(data):
+    return strict_json_text(data).encode()
+
+
 def save_result(result):
+    serialized = strict_json_text(result, indent=2)
     RUNS.mkdir(parents=True, exist_ok=True)
     (RUNS / (result['run_id'] + '.json')).write_text(
-        json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+        serialized, encoding='utf-8')
 
 
 def calculate(data):
@@ -348,7 +360,7 @@ def calculate(data):
 class Handler(BaseHTTPRequestHandler):
     def send(self, status, data, content_type='application/json; charset=utf-8'):
         if not isinstance(data, bytes):
-            data = json.dumps(data, ensure_ascii=False).encode()
+            data = strict_json_bytes(data)
         self.send_response(status)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(data)))

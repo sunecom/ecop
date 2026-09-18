@@ -56,6 +56,14 @@ def vapor_fraction(stream):
                 if phase['name'].lower() == 'vapor')
 
 
+def require_finite(label, **values):
+    invalid = [name for name, value in values.items()
+               if isinstance(value, bool) or not isinstance(value, (int, float))
+               or not math.isfinite(value)]
+    if invalid:
+        raise RuntimeError(f'{label}包含无效数值: {", ".join(invalid)}')
+
+
 def add_feed(tool, name, temperature_C, pressure_kPa, flow_kg_h):
     flow_kg_s = flow_kg_h / 3600
     tool('dwsim_stream_add_material', name=name, temperature_K=temperature_C + 273.15,
@@ -63,6 +71,7 @@ def add_feed(tool, name, temperature_C, pressure_kPa, flow_kg_h):
          composition={'Water': 1.0})
     tool('dwsim_stream_set_conditions', name=name, mass_flow_kg_s=flow_kg_s)
     actual = tool('dwsim_stream_get_results', name=name)
+    require_finite(f'引擎{name}进料结果', mass_flow_kg_s=actual.get('mass_flow_kg_s'))
     if not math.isclose(actual['mass_flow_kg_s'], flow_kg_s, rel_tol=1e-8):
         raise RuntimeError(f'引擎{name}流量与输入不一致')
     return actual
@@ -98,25 +107,50 @@ def run_mixer(values, tool):
     feed1 = tool('dwsim_stream_get_results', name='FEED-1')
     feed2 = tool('dwsim_stream_get_results', name='FEED-2')
     product = tool('dwsim_stream_get_results', name='PRODUCT')
+    feed1_mix, feed2_mix, product_mix = mixture(feed1), mixture(feed2), mixture(product)
+    feed1_vapor = vapor_fraction(feed1)
+    feed2_vapor = vapor_fraction(feed2)
+    product_vapor = vapor_fraction(product)
+    require_finite(
+        '混合器引擎结果',
+        feed1_mass_flow=feed1.get('mass_flow_kg_s'),
+        feed1_enthalpy=feed1_mix.get('enthalpy_kJ_kg'),
+        feed1_vapor_fraction=feed1_vapor,
+        feed2_mass_flow=feed2.get('mass_flow_kg_s'),
+        feed2_enthalpy=feed2_mix.get('enthalpy_kJ_kg'),
+        feed2_vapor_fraction=feed2_vapor,
+        product_mass_flow=product.get('mass_flow_kg_s'),
+        product_temperature=product.get('temperature_K'),
+        product_pressure=product.get('pressure_Pa'),
+        product_enthalpy=product_mix.get('enthalpy_kJ_kg'),
+        product_vapor_fraction=product_vapor,
+    )
     mass_in = feed1['mass_flow_kg_s'] + feed2['mass_flow_kg_s']
     mass_residual = (mass_in - product['mass_flow_kg_s']) * 3600
-    enthalpy_in = (feed1['mass_flow_kg_s'] * mixture(feed1)['enthalpy_kJ_kg'] +
-                   feed2['mass_flow_kg_s'] * mixture(feed2)['enthalpy_kJ_kg'])
-    enthalpy_out = product['mass_flow_kg_s'] * mixture(product)['enthalpy_kJ_kg']
+    enthalpy_in = (feed1['mass_flow_kg_s'] * feed1_mix['enthalpy_kJ_kg'] +
+                   feed2['mass_flow_kg_s'] * feed2_mix['enthalpy_kJ_kg'])
+    enthalpy_out = product['mass_flow_kg_s'] * product_mix['enthalpy_kJ_kg']
     energy_residual = enthalpy_out - enthalpy_in
     energy_residual_relative = abs(energy_residual) / max(abs(enthalpy_in), 1e-12)
     expected_pressure = min(values['feed1_pressure_kPa'], values['feed2_pressure_kPa'])
+    require_finite(
+        '混合器派生结果', mass_in=mass_in, mass_residual=mass_residual,
+        enthalpy_in=enthalpy_in, enthalpy_out=enthalpy_out,
+        energy_residual=energy_residual,
+        energy_residual_relative=energy_residual_relative,
+        expected_pressure=expected_pressure,
+    )
     if abs(mass_residual) > 1e-6 or energy_residual_relative > 1e-4:
         raise RuntimeError('混合器质量或焓流衡算未通过')
     if abs(product['pressure_Pa'] / 1000 - expected_pressure) > 0.02:
         raise RuntimeError('混合器出口压力校核未通过')
-    if any(vapor_fraction(stream) > 1e-6 for stream in (feed1, feed2, product)):
+    if any(value > 1e-6 for value in (feed1_vapor, feed2_vapor, product_vapor)):
         raise RuntimeError('混合工况产生汽相，超出当前单液相边界')
     results = {
         'outlet_flow_kg_h': product['mass_flow_kg_s'] * 3600,
         'outlet_temperature_C': product['temperature_K'] - 273.15,
         'outlet_pressure_kPa': product['pressure_Pa'] / 1000,
-        'outlet_vapor_fraction': vapor_fraction(product),
+        'outlet_vapor_fraction': product_vapor,
         'mass_residual_kg_h': mass_residual,
         'enthalpy_flow_residual_kW': energy_residual,
         'enthalpy_flow_residual_relative': energy_residual_relative,
@@ -148,11 +182,30 @@ def run_splitter(values, tool):
     feed = tool('dwsim_stream_get_results', name='FEED')
     product1 = tool('dwsim_stream_get_results', name='PRODUCT-1')
     product2 = tool('dwsim_stream_get_results', name='PRODUCT-2')
+    require_finite(
+        '分流器引擎结果',
+        feed_mass_flow=feed.get('mass_flow_kg_s'),
+        feed_temperature=feed.get('temperature_K'),
+        feed_pressure=feed.get('pressure_Pa'),
+        product1_mass_flow=product1.get('mass_flow_kg_s'),
+        product1_temperature=product1.get('temperature_K'),
+        product1_pressure=product1.get('pressure_Pa'),
+        product2_mass_flow=product2.get('mass_flow_kg_s'),
+        product2_temperature=product2.get('temperature_K'),
+        product2_pressure=product2.get('pressure_Pa'),
+    )
     feed_flow = feed['mass_flow_kg_s']
+    if feed_flow <= 0:
+        raise RuntimeError('分流器引擎进料流量无效')
     mass_residual = (feed_flow - product1['mass_flow_kg_s'] - product2['mass_flow_kg_s']) * 3600
     outlet1_fraction = product1['mass_flow_kg_s'] / feed_flow
     outlet2_fraction = product2['mass_flow_kg_s'] / feed_flow
     expected_fraction = values['outlet1_percent'] / 100
+    require_finite(
+        '分流器派生结果', mass_residual=mass_residual,
+        outlet1_fraction=outlet1_fraction, outlet2_fraction=outlet2_fraction,
+        expected_fraction=expected_fraction,
+    )
     if abs(mass_residual) > 1e-6:
         raise RuntimeError('分流器物料衡算未通过')
     if abs(outlet1_fraction - expected_fraction) > 1e-6 or abs(
@@ -194,13 +247,33 @@ def run_valve(values, tool):
     check, solved, unit = solve(tool, 'VLV-01', {'FEED', 'PRODUCT', 'VLV-01'})
     feed = tool('dwsim_stream_get_results', name='FEED')
     product = tool('dwsim_stream_get_results', name='PRODUCT')
+    feed_mix, product_mix = mixture(feed), mixture(product)
+    feed_vapor = vapor_fraction(feed)
+    product_vapor = vapor_fraction(product)
+    require_finite(
+        '阀门引擎结果',
+        feed_mass_flow=feed.get('mass_flow_kg_s'),
+        feed_enthalpy=feed_mix.get('enthalpy_kJ_kg'),
+        feed_vapor_fraction=feed_vapor,
+        product_mass_flow=product.get('mass_flow_kg_s'),
+        product_temperature=product.get('temperature_K'),
+        product_pressure=product.get('pressure_Pa'),
+        product_enthalpy=product_mix.get('enthalpy_kJ_kg'),
+        product_vapor_fraction=product_vapor,
+    )
     mass_residual = (feed['mass_flow_kg_s'] - product['mass_flow_kg_s']) * 3600
-    inlet_enthalpy = mixture(feed)['enthalpy_kJ_kg']
-    outlet_enthalpy = mixture(product)['enthalpy_kJ_kg']
+    inlet_enthalpy = feed_mix['enthalpy_kJ_kg']
+    outlet_enthalpy = product_mix['enthalpy_kJ_kg']
     enthalpy_residual = outlet_enthalpy - inlet_enthalpy
     enthalpy_residual_relative = abs(enthalpy_residual) / max(abs(inlet_enthalpy), 1e-12)
     outlet_pressure = product['pressure_Pa'] / 1000
-    if vapor_fraction(feed) > 1e-6:
+    require_finite(
+        '阀门派生结果', mass_residual=mass_residual,
+        enthalpy_residual=enthalpy_residual,
+        enthalpy_residual_relative=enthalpy_residual_relative,
+        outlet_pressure=outlet_pressure,
+    )
+    if feed_vapor > 1e-6:
         raise RuntimeError('阀门入口并非单液相，超出当前模块边界')
     if abs(mass_residual) > 1e-6 or enthalpy_residual_relative > 1e-4:
         raise RuntimeError('阀门质量或等焓校核未通过')
@@ -211,7 +284,7 @@ def run_valve(values, tool):
         'outlet_temperature_C': product['temperature_K'] - 273.15,
         'outlet_pressure_kPa': outlet_pressure,
         'pressure_drop_kPa': values['inlet_pressure_kPa'] - outlet_pressure,
-        'outlet_vapor_fraction': vapor_fraction(product),
+        'outlet_vapor_fraction': product_vapor,
         'mass_residual_kg_h': mass_residual,
         'enthalpy_residual_kJ_kg': enthalpy_residual,
         'enthalpy_residual_relative': enthalpy_residual_relative,

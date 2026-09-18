@@ -99,6 +99,15 @@ class CloudTests(unittest.TestCase):
         self.assertTrue(status.startswith('502'))
         self.assertNotIn(b'PRIVATE_ENGINE_DETAIL', body)
 
+    def test_nonfinite_success_response_becomes_controlled_error(self):
+        for value in (float('nan'), float('inf'), float('-inf')):
+            with self.subTest(value=value), patch.object(
+                    cloud_app.server, 'calculate', return_value={'result': value}):
+                status, body = request('/api/calculate', 'POST', origin=cloud_app.ORIGIN,
+                                       nonce=cloud_app.server.NONCE, payload=SAMPLE)
+            self.assertTrue(status.startswith('502'))
+            self.assertEqual(json.loads(body), {'error': '计算未成功，请联系管理员查看服务日志'})
+
     def test_catalog_is_read_only_curated_data(self):
         sample = {'ok': True, 'counts': {'mcp_tools': 48, 'unit_operations': 44}}
         with patch.object(cloud_app.server, 'get_catalog', return_value=sample):

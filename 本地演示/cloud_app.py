@@ -22,7 +22,7 @@ if (not PASSWORD or len(PASSWORD) < 16 or not PARSED_ORIGIN.netloc or
 
 def application(environ, start_response):
     def respond(status, data, content_type='application/json; charset=utf-8', extra=()):
-        body = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
+        body = data if isinstance(data, bytes) else server.strict_json_bytes(data)
         start_response(status, [('Content-Type', content_type), ('Content-Length', str(len(body))),
                                 ('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff'),
                                 ('X-Frame-Options', 'DENY'), ('Referrer-Policy', 'no-referrer'), *extra])
