@@ -9,6 +9,7 @@ services:
     ports:
       - "127.0.0.1:${ECOP_HOST_PORT:-18765}:8000"
     environment:
+      HOME: /tmp
       ECOP_PUBLIC_ORIGIN: "${ECOP_PUBLIC_ORIGIN:?Set HTTPS public origin}"
       ECOP_USER: "${ECOP_USER:-ecop}"
       ECOP_PASSWORD_FILE: /run/secrets/ecop_password
@@ -18,7 +19,7 @@ services:
       ECOP_RUNS_DIR: /data/runs
     secrets: [ecop_password, mcp_token]
     volumes: [runs:/data]
-    networks: [engine]
+    networks: [edge, engine]
     depends_on: [dwsim]
     read_only: true
     tmpfs: [/tmp]
@@ -39,10 +40,16 @@ services:
     platform: linux/amd64
     restart: unless-stopped
     init: true
+    user: "10001:10001"
+    environment:
+      HOME: /tmp
     # Official executable path and flags verified against upstream Dockerfile/Program.cs.
     entrypoint: [/bin/sh, -ec]
     command:
-      - 'exec /opt/dwsim-mcp/dwsim-mcp --http --host 0.0.0.0 --port 5901 --token "$$(cat /run/secrets/mcp_token)"'
+      - |
+        token="$$(cat /run/secrets/mcp_token)"
+        test -n "$$token" || { echo "MCP token is empty" >&2; exit 1; }
+        exec /opt/dwsim-mcp/dwsim-mcp --http --host 0.0.0.0 --port 5901 --token "$$token"
     secrets: [mcp_token]
     networks: [engine]
     security_opt: [no-new-privileges:true]
@@ -53,6 +60,7 @@ services:
       driver: json-file
       options: {max-size: 10m, max-file: "3"}
 networks:
+  edge:
   engine:
     internal: true
 volumes:

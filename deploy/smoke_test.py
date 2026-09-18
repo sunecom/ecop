@@ -1,4 +1,5 @@
 """Run on the target host after startup. Never prints passwords or auth headers."""
+import argparse
 import base64
 import json
 import re
@@ -6,8 +7,12 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-base = 'http://127.0.0.1:18765'
-origin = 'https://ecop.aitomoney.online'
+parser = argparse.ArgumentParser()
+parser.add_argument('--base', default='http://127.0.0.1:18765')
+parser.add_argument('--origin', default='https://ecop.aitomoney.online')
+args = parser.parse_args()
+base = args.base.rstrip('/')
+origin = args.origin.rstrip('/')
 password = (Path(__file__).parent / 'secrets/ecop_password.txt').read_text().strip()
 auth = 'Basic ' + base64.b64encode(('ecop:' + password).encode()).decode()
 
