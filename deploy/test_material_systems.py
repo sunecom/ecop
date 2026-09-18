@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -176,6 +177,31 @@ class MaterialSystemTests(unittest.TestCase):
             vapor_composition=wrong_mass, vapor_mole=wrong_mole)
         with self.assertRaisesRegex(RuntimeError, '重组分组分'):
             material_systems.run(values, ReplayTool(product=wrong_product))
+
+    def test_material_failure_is_not_saved_and_flowsheet_is_closed(self):
+        calls = []
+
+        def fake_call(tool_name, **kwargs):
+            calls.append((tool_name, kwargs))
+            if tool_name == 'dwsim_flowsheet_create':
+                return {'flowsheet_id': 'p2-fault-flow'}
+            if tool_name == 'dwsim_thermo_list_property_packages':
+                return {'property_packages': ['NRTL']}
+            if tool_name == 'dwsim_flowsheet_close':
+                return {'closed': True}
+            return {}
+
+        with tempfile.TemporaryDirectory() as run_dir, \
+                patch.object(server, 'RUNS', Path(run_dir)), \
+                patch.object(server, 'call', side_effect=fake_call), \
+                patch.object(material_systems, 'run',
+                             side_effect=RuntimeError('phase allocation fault')):
+            with self.assertRaisesRegex(RuntimeError, 'phase allocation fault'):
+                server.calculate(BINARY)
+            self.assertEqual(list(Path(run_dir).glob('*.json')), [])
+        self.assertIn(('dwsim_flowsheet_close', {'flowsheet_id': 'p2-fault-flow'}), calls)
+        self.assertTrue(server.LOCK.acquire(blocking=False))
+        server.LOCK.release()
 
 
 if __name__ == '__main__':

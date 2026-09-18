@@ -11,6 +11,8 @@
   "material_cases": [
     {"id": "WATER-STEAM", "payload": {"module": "material_flash", "system": "water", "property_package": "steam_tables", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
     {"id": "ETHANOL-NRTL", "payload": {"module": "material_flash", "system": "ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "ETHANOL-RAOULT", "payload": {"module": "material_flash", "system": "ethanol", "property_package": "raoult", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "ACETONE-NRTL", "payload": {"module": "material_flash", "system": "acetone", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
     {"id": "ACETONE-RAOULT", "payload": {"module": "material_flash", "system": "acetone", "property_package": "raoult", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
     {"id": "BINARY-NRTL", "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 50}},
     {"id": "BINARY-RAOULT", "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "raoult", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 50}},
