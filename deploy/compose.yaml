@@ -1,5 +1,16 @@
 name: ecop
 services:
+  project-init:
+    image: python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254
+    user: "0:0"
+    restart: "no"
+    entrypoint: [/bin/sh, -ec]
+    command: ["mkdir -p /projects/exports && chmod 700 /projects /projects/exports && chown -R 10001:10001 /projects"]
+    volumes: [projects:/projects]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
   web:
     build:
       context: ..
@@ -24,7 +35,9 @@ services:
       - runs:/data
       - projects:/projects
     networks: [edge, engine]
-    depends_on: [dwsim]
+    depends_on:
+      project-init: {condition: service_completed_successfully}
+      dwsim: {condition: service_started}
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
@@ -58,6 +71,8 @@ services:
     volumes:
       - ./models:/models:ro
       - projects:/projects
+    depends_on:
+      project-init: {condition: service_completed_successfully}
     networks: [engine]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
