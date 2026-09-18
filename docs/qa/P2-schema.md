@@ -51,4 +51,4 @@ NRTL 与 Raoult 相差 `7.856600 °C`，只证明物性包选择确实作用于�
 - Ethanol：NIST 常压沸点 `351.5 K`；候选相差 `+0.305512 °C`。[NIST Ethanol](https://webbook.nist.gov/cgi/cbook.cgi?ID=C64175&Mask=4)
 - Acetone：NIST 常压沸点 `329.3 K`；候选相差 `-0.010428 °C`。[NIST Acetone](https://webbook.nist.gov/cgi/cbook.cgi?ID=C67641&Mask=4)
 - 这些比较属于外部量级筛查，不设置未经来源支持的 `0.6 °C` 硬容差，也不是物性包精度认证。
-- 水–乙醇已完成官方 Windows portable 10.2.8 Automation 同模型重新求解，一致性结果相同；这仍不是实验数据验证或 P3 桌面 UI 验收。MCP 未暴露 NRTL 二元参数来源和有效温区，因此明确记录为未知，不因收敛而推断适用。
+- 水–乙醇已使用官方 Windows portable 10.2.8 运行时和本机 pin `0cd6a30` 源码构建的 Automation 驱动完成同模型重新求解，一致性结果相同；Automation DLL 不是 portable 自带文件。这仍不是实验数据验证或 P3 桌面 UI 验收。MCP 未暴露 NRTL 二元参数来源和有效温区，因此明确记录为未知，不因收敛而推断适用。

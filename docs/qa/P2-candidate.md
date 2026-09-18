@@ -22,15 +22,15 @@
 ## R02 Windows 发行版同模型对照
 
 - 输入模型：`.local/qa/P2/p2-r01-tight.dwxml`，SHA-256 `4774bf2ad14b66a799d7e92f9b05cc80afb4871ca968eac5f8fb43b48bf80f67`。
-- 使用已校验官方 Windows portable DWSIM 10.2.8 发行目录 `D:/AiToMoney/tools/DWSIM-10.2.8`。桌面可执行文件版本 `10.2.8.0`、产品提交 `986bda33b525c7665fb5d2c7dd6fb0e067b2959c`，SHA-256 `bfafafafd9cd1ef1bc2213d582b346b52bebc8f3dcf3c938498bbb42f23774fc`。
-- 驱动通过 `Automation3.LoadFlowsheet` 加载模型，明确调用 `CalculateFlowsheet4` 重新求解，再以 `SaveFlowsheet(..., false)` 保存新 XML。`Solved=true`，错误列表为空。
+- 运行时使用已校验官方 Windows portable DWSIM 10.2.8 发行目录 `D:/AiToMoney/tools/DWSIM-10.2.8`。桌面可执行文件版本 `10.2.8.0`、产品提交 `986bda33b525c7665fb5d2c7dd6fb0e067b2959c`，SHA-256 `bfafafafd9cd1ef1bc2213d582b346b52bebc8f3dcf3c938498bbb42f23774fc`。
+- Automation 驱动 DLL 是本机 pin `0cd6a30ce1b5eb976cdd94495d102a9691b067f5` 源码构建，并非 portable 发行包自带文件。驱动通过 `Automation3.LoadFlowsheet` 加载模型，明确调用 `CalculateFlowsheet4` 重新求解，再以 `SaveFlowsheet(..., false)` 保存新 XML。`Solved=true`，错误列表为空。
 - Windows 重算结果：温度 `98.9398412521 °C`、汽相摩尔率 `0.400000018325163`、汽相质量率 `0.487715795344353`、热负荷 `217.1864089483 kW`；与输入模型保存值三项差值均为 0。
 - 原始证据：`.local/qa/P2/desktop-crosscheck/p2-r01-desktop-evidence.json`，SHA-256 `ee122bea68b5a6129a6ecc8d31f820517211f52d75976e1504b6b108f82d1520`。
 - 该结果仅是官方 Windows 发行版 Automation 路径的同模型一致性对照，不称实验精度认证，也不替代 P3 日后桌面实际打开和导出文件验收。
 
 ## 验证结果
 
-- 本地单元/故障回放：36 项通过，1 项按设计跳过。新增模板精度篡改拒绝测试；覆盖配置/组成/流量回读、压力、非有限值、失败不落盘、流程图清理及相分配错误拒绝。
+- 本地单元/故障回放：共 36 项，35 项通过、1 项按设计跳过。新增模板精度篡改拒绝测试；覆盖配置/组成/流量回读、压力、非有限值、失败不落盘、流程图清理及相分配错误拒绝。
 - 直连 MCP：7 个白名单组合加原失败工况共 8 个真实求解，全部清理 flowsheet。
 - Web API：9 个物系工况、5 个拒绝工况、Origin/nonce/未认证防护全部通过。
 - 原九工作流：目标汽化、出口温度、泵、Mixer、Splitter、Valve、HeatExchanger、Compressor、Vessel 各 1 个真实回归全部通过。
