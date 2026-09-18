@@ -1,0 +1,9 @@
+271cbc02a367e13b09b835c45ee612d2d9b9919232f33e5e9b0bff69a689f56a  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/ecop-dwsim-inspect.json
+e63d9b28ce8af54199e332397aab3b3dc1b6a0a8b8ec26baa4a0d6c0e7585a28  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/ecop_runs.tar.gz
+ee7213a13d6f3629aa058f60446afed2dac8cc6df09da59b22da109b8f4e89f6  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/ecop-web-inspect.json
+ec3ced38440e88aede19d76719c1714388e6d425e8c2bb30b005f708d5e1e9a7  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/nginx-ecop.conf
+8b3e66551c186f5d4f993f64b0d98525b1c2d9d940060d523fcb7350bcf641e2  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/old-web-image-inspect.json
+323670c6c5b2a495ecebca064d2177464102001b7b3c36bb64ad924cb4f03b44  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/post-deploy-state.txt
+d6a0c85e5f7bc32fda12e6238fa0244cb8b7dc6e71db2a1065990d481de0277a  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/production-p1a-smoke.json
+1888c504bcf3e25ea683726ad16b1027563b3ac12d2c119c44144c44f8778373  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/release-metadata.txt
+d93fb215116b5808f0b7a4185e6e5ad8eeba9e922123c5f821ec9bc3a6ecfbf0  /opt/ecop/.rollback/p1a-5effd72-20260918T134252Z/source-config.tar.gz
