@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "stage": "P2",
+  "engine": "DWSIM 10.2.8",
+  "tolerances": {
+    "overall_mass_residual_abs_kg_h": 0.000001,
+    "phase_balance_relative": 0.00002,
+    "target_pressure_abs_kPa": 0.02,
+    "target_vapor_molar_fraction_abs": 0.00001
+  },
+  "material_cases": [
+    {"id": "WATER-STEAM", "payload": {"module": "material_flash", "system": "water", "property_package": "steam_tables", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "ETHANOL-NRTL", "payload": {"module": "material_flash", "system": "ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "ACETONE-RAOULT", "payload": {"module": "material_flash", "system": "acetone", "property_package": "raoult", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "BINARY-NRTL", "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 50}},
+    {"id": "BINARY-RAOULT", "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "raoult", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 50}},
+    {"id": "BINARY-NRTL-DISTURB", "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "nrtl", "flow_kg_h": 1500, "inlet_temperature_C": 40, "pressure_kPa": 200, "vapor_molar_percent": 30, "ethanol_mass_percent": 30}}
+  ],
+  "regression_cases": [
+    {"id": "REG-EVAPORATION", "payload": {"module": "evaporation", "flow_kg_h": 1000, "temperature_C": 25, "pressure_kPa": 101.325, "vapor_percent": 30}},
+    {"id": "REG-TEMPERATURE", "payload": {"module": "temperature", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 200, "outlet_temperature_C": 60}},
+    {"id": "REG-PUMP", "payload": {"module": "pump", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 101.325, "outlet_pressure_kPa": 500, "efficiency_percent": 75}},
+    {"id": "REG-MIXER", "payload": {"module": "mixer", "feed1_flow_kg_h": 400, "feed1_temperature_C": 25, "feed1_pressure_kPa": 200, "feed2_flow_kg_h": 600, "feed2_temperature_C": 55, "feed2_pressure_kPa": 200}},
+    {"id": "REG-SPLITTER", "payload": {"module": "splitter", "flow_kg_h": 1000, "temperature_C": 35, "pressure_kPa": 250, "outlet1_percent": 30}},
+    {"id": "REG-VALVE", "payload": {"module": "valve", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 200}},
+    {"id": "REG-HEAT-EXCHANGER", "payload": {"module": "heat_exchanger", "hot_flow_kg_h": 1000, "hot_inlet_temperature_C": 80, "hot_pressure_kPa": 300, "cold_flow_kg_h": 1200, "cold_inlet_temperature_C": 20, "cold_pressure_kPa": 300, "hot_outlet_temperature_C": 50}},
+    {"id": "REG-COMPRESSOR", "payload": {"module": "compressor", "flow_kg_h": 1000, "inlet_temperature_C": 200, "inlet_pressure_kPa": 200, "outlet_pressure_kPa": 500, "efficiency_percent": 75}},
+    {"id": "REG-VESSEL", "payload": {"module": "vessel", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 200, "feed_vapor_percent": 30}}
+  ],
+  "negative_cases": [
+    {"id": "UNSUPPORTED-SYSTEM", "expected_status": 400, "payload": {"module": "material_flash", "system": "industrial_wastewater", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "INCOMPATIBLE-WATER-NRTL", "expected_status": 400, "payload": {"module": "material_flash", "system": "water", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50}},
+    {"id": "INCOMPATIBLE-BINARY-STEAM", "expected_status": 400, "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "steam_tables", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 50}},
+    {"id": "INVALID-COMPOSITION", "expected_status": 400, "payload": {"module": "material_flash", "system": "water_ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_molar_percent": 50, "ethanol_mass_percent": 100}},
+    {"id": "MISSING-VAPOR-BASIS", "expected_status": 400, "payload": {"module": "material_flash", "system": "ethanol", "property_package": "nrtl", "flow_kg_h": 1000, "inlet_temperature_C": 25, "pressure_kPa": 101.325, "vapor_percent": 50}}
+  ]
+}

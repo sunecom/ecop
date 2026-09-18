@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 import json, math, threading, time, uuid, secrets, os
-import advanced_units, basic_units, catalog
+import advanced_units, basic_units, catalog, material_systems
 
 BASE = Path(__file__).resolve().parent
 PORT = 18765
@@ -86,6 +86,9 @@ def validate(data):
     advanced_values = advanced_units.validate(data, number)
     if advanced_values is not None:
         return advanced_values
+    material_values = material_systems.validate(data, number)
+    if material_values is not None:
+        return material_values
     raise ValueError('不支持的计算模块')
 
 
@@ -124,7 +127,7 @@ def get_catalog():
                 'unit_operations': len(unit_types),
                 'property_packages': len(packages),
                 'compounds': compounds.get('count', len(COMPOUND_CACHE)),
-                'live_workflows': 9,
+                'live_workflows': 10,
             },
             'tool_groups': tool_groups,
             'mcp_tools': tool_records,
@@ -195,7 +198,11 @@ def calculate(data):
     try:
         started = time.monotonic()
         module = values['module']
-        special_definitions = {**basic_units.DEFINITIONS, **advanced_units.DEFINITIONS}
+        special_definitions = {
+            **basic_units.DEFINITIONS,
+            **advanced_units.DEFINITIONS,
+            **material_systems.DEFINITIONS,
+        }
         if module in special_definitions:
             definition = special_definitions[module]
             module_name = definition['name']
@@ -218,14 +225,23 @@ def calculate(data):
         def tool(tool_name, **kwargs):
             return call(tool_name, flowsheet_id=flowsheet_id, **kwargs)
 
-        tool('dwsim_thermo_add_compounds', names=['Water'])
+        if module != 'material_flash':
+            tool('dwsim_thermo_add_compounds', names=['Water'])
         packages = tool('dwsim_thermo_list_property_packages')['property_packages']
-        property_package = next(name for name in packages if 'Steam' in name)
-        tool('dwsim_thermo_set_property_package', name=property_package)
+        property_package = (values['property_package'] if module == 'material_flash'
+                            else next(name for name in packages if 'Steam' in name))
+        if property_package not in packages:
+            raise RuntimeError('请求的物性包不在当前引擎库存中')
+        if module != 'material_flash':
+            tool('dwsim_thermo_set_property_package', name=property_package)
 
         if module in special_definitions:
-            workflow = (basic_units.run(values, tool) if module in basic_units.DEFINITIONS
-                        else advanced_units.run(values, tool))
+            if module in basic_units.DEFINITIONS:
+                workflow = basic_units.run(values, tool)
+            elif module in advanced_units.DEFINITIONS:
+                workflow = advanced_units.run(values, tool)
+            else:
+                workflow = material_systems.run(values, tool)
             result = {
                 'run_id': uuid.uuid4().hex,
                 'time': time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -240,6 +256,8 @@ def calculate(data):
                 'comparison': workflow['comparison'],
                 'raw': workflow['raw'],
             }
+            if 'material_system' in workflow:
+                result['material_system'] = workflow['material_system']
             save_result(result)
             return result
 
