@@ -222,6 +222,30 @@ def build_unit_groups(available_types):
             'route': '#workbench',
             'workspace_mode': 'pump',
         },
+        'Mixer': {
+            'summary': '已接入两股纯水等压混合，校核质量与焓流守恒。',
+            'inputs': ['两股纯水流量与温度', '两股进料绝对压力'],
+            'outputs': ['出口流量、温度与压力', '质量与焓流残差'],
+            'scenarios': ['两股纯水工况混合'],
+            'route': '#workbench',
+            'workspace_mode': 'mixer',
+        },
+        'Splitter': {
+            'summary': '已接入纯水两路按质量比例分流。',
+            'inputs': ['纯水流量与入口状态', '1号出口分流比'],
+            'outputs': ['两路出口流量与状态', '实际分流比与质量残差'],
+            'scenarios': ['工艺物流定比分配'],
+            'route': '#workbench',
+            'workspace_mode': 'splitter',
+        },
+        'Valve': {
+            'summary': '已接入纯水指定出口绝对压力的阀门节流。',
+            'inputs': ['纯水流量与入口状态', '目标出口绝对压力'],
+            'outputs': ['出口温压与汽相分数', '压降、质量与等焓校核'],
+            'scenarios': ['纯水减压与节流后状态'],
+            'route': '#workbench',
+            'workspace_mode': 'valve',
+        },
     }
     groups = []
     for group in UNIT_GROUPS:

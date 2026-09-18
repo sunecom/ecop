@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "stage": "P1A",
+  "engine": "DWSIM 10.2.8",
+  "engine_reference": "image:10.2.8@sha256:015fd7ecbf219192d6b9d81a9080ba02fd0de7d4b9388506c4ab755159032f36",
+  "property_package": "Steam Tables (IAPWS-IF97)",
+  "tolerances": {
+    "mass_residual_abs_kg_h": 0.000001,
+    "energy_residual_relative": 0.0001,
+    "target_pressure_abs_kPa": 0.02,
+    "split_fraction_abs": 0.000001,
+    "state_temperature_abs_C": 0.02
+  },
+  "cases": [
+    {
+      "id": "MIXER-BASE",
+      "payload": {"module": "mixer", "feed1_flow_kg_h": 400, "feed1_temperature_C": 25, "feed1_pressure_kPa": 200, "feed2_flow_kg_h": 600, "feed2_temperature_C": 55, "feed2_pressure_kPa": 200},
+      "comparison_metric": "outlet_temperature_C"
+    },
+    {
+      "id": "MIXER-DISTURB",
+      "payload": {"module": "mixer", "feed1_flow_kg_h": 700, "feed1_temperature_C": 20, "feed1_pressure_kPa": 300, "feed2_flow_kg_h": 300, "feed2_temperature_C": 80, "feed2_pressure_kPa": 300},
+      "comparison_metric": "outlet_temperature_C"
+    },
+    {
+      "id": "SPLITTER-BASE",
+      "payload": {"module": "splitter", "flow_kg_h": 1000, "temperature_C": 35, "pressure_kPa": 250, "outlet1_percent": 30},
+      "comparison_metric": "outlet1_flow_kg_h",
+      "expected": {"outlet1_flow_kg_h": 300, "outlet2_flow_kg_h": 700}
+    },
+    {
+      "id": "SPLITTER-DISTURB",
+      "payload": {"module": "splitter", "flow_kg_h": 1500, "temperature_C": 60, "pressure_kPa": 500, "outlet1_percent": 65},
+      "comparison_metric": "outlet1_flow_kg_h",
+      "expected": {"outlet1_flow_kg_h": 975, "outlet2_flow_kg_h": 525}
+    },
+    {
+      "id": "VALVE-BASE",
+      "payload": {"module": "valve", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 200},
+      "comparison_metric": "pressure_drop_kPa",
+      "expected": {"outlet_pressure_kPa": 200, "pressure_drop_kPa": 300}
+    },
+    {
+      "id": "VALVE-DISTURB",
+      "payload": {"module": "valve", "flow_kg_h": 1800, "inlet_temperature_C": 70, "inlet_pressure_kPa": 1000, "outlet_pressure_kPa": 300},
+      "comparison_metric": "pressure_drop_kPa",
+      "expected": {"outlet_pressure_kPa": 300, "pressure_drop_kPa": 700}
+    }
+  ],
+  "negative_cases": [
+    {"id": "MIXER-MISSING", "expected_status": 400, "payload": {"module": "mixer"}},
+    {"id": "MIXER-BOOL", "expected_status": 400, "payload": {"module": "mixer", "feed1_flow_kg_h": true, "feed1_temperature_C": 25, "feed1_pressure_kPa": 200, "feed2_flow_kg_h": 600, "feed2_temperature_C": 55, "feed2_pressure_kPa": 200}},
+    {"id": "MIXER-PRESSURE-MISMATCH", "expected_status": 400, "payload": {"module": "mixer", "feed1_flow_kg_h": 400, "feed1_temperature_C": 25, "feed1_pressure_kPa": 200, "feed2_flow_kg_h": 600, "feed2_temperature_C": 55, "feed2_pressure_kPa": 201}},
+    {"id": "SPLITTER-RATIO-ZERO", "expected_status": 400, "payload": {"module": "splitter", "flow_kg_h": 1000, "temperature_C": 35, "pressure_kPa": 250, "outlet1_percent": 0}},
+    {"id": "SPLITTER-RATIO-FULL", "expected_status": 400, "payload": {"module": "splitter", "flow_kg_h": 1000, "temperature_C": 35, "pressure_kPa": 250, "outlet1_percent": 100}},
+    {"id": "VALVE-NO-DROP", "expected_status": 400, "payload": {"module": "valve", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 500}},
+    {"id": "VALVE-REVERSE", "expected_status": 400, "payload": {"module": "valve", "flow_kg_h": 1000, "inlet_temperature_C": 25, "inlet_pressure_kPa": 500, "outlet_pressure_kPa": 600}},
+    {"id": "NON-FINITE", "expected_status": 400, "payload": {"module": "splitter", "flow_kg_h": "NaN", "temperature_C": 35, "pressure_kPa": 250, "outlet1_percent": 30}}
+  ]
+}

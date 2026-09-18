@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 import json, math, threading, time, uuid, secrets, os
-import catalog
+import basic_units, catalog
 
 BASE = Path(__file__).resolve().parent
 PORT = 18765
@@ -80,6 +80,9 @@ def validate(data):
         if values['outlet_pressure_kPa'] - values['inlet_pressure_kPa'] < 10:
             raise ValueError('出口压力必须比入口压力至少高 10 kPa')
         return values
+    basic_values = basic_units.validate(data, number)
+    if basic_values is not None:
+        return basic_values
     raise ValueError('不支持的计算模块')
 
 
@@ -118,7 +121,7 @@ def get_catalog():
                 'unit_operations': len(unit_types),
                 'property_packages': len(packages),
                 'compounds': compounds.get('count', len(COMPOUND_CACHE)),
-                'live_workflows': 3,
+                'live_workflows': 6,
             },
             'tool_groups': tool_groups,
             'mcp_tools': tool_records,
@@ -177,7 +180,13 @@ def calculate(data):
     try:
         started = time.monotonic()
         module = values['module']
-        if module == 'evaporation':
+        if module in basic_units.DEFINITIONS:
+            definition = basic_units.DEFINITIONS[module]
+            module_name = definition['name']
+            unit_type = definition['unit_type']
+            unit_name = definition['unit_name']
+            inlet_temperature = inlet_pressure = None
+        elif module == 'evaporation':
             module_name, unit_type, unit_name = '目标汽化计算', 'Heater', 'EV-01'
             inlet_temperature, inlet_pressure = values['temperature_C'], values['pressure_kPa']
         elif module == 'temperature':
@@ -197,6 +206,26 @@ def calculate(data):
         packages = tool('dwsim_thermo_list_property_packages')['property_packages']
         property_package = next(name for name in packages if 'Steam' in name)
         tool('dwsim_thermo_set_property_package', name=property_package)
+
+        if module in basic_units.DEFINITIONS:
+            workflow = basic_units.run(values, tool)
+            result = {
+                'run_id': uuid.uuid4().hex,
+                'time': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'module': {'id': module, 'name': module_name, 'unit_operation': unit_type,
+                           'unit_tag': unit_name},
+                'inputs': values,
+                'engine': 'DWSIM 10.2.8',
+                'commit': SHA,
+                'property_package': property_package,
+                'elapsed_s': round(time.monotonic() - started, 2),
+                'results': workflow['results'],
+                'comparison': workflow['comparison'],
+                'raw': workflow['raw'],
+            }
+            save_result(result)
+            return result
+
         tool('dwsim_stream_add_material', name='FEED', temperature_K=inlet_temperature + 273.15,
              pressure_Pa=inlet_pressure * 1000, mass_flow_kg_s=values['flow_kg_h'] / 3600,
              composition={'Water': 1.0})

@@ -1,12 +1,12 @@
 group_code,group,module,name,actual_tools_or_api,material_phase,inputs,outputs,status,self_check,independent_review,evidence
-A,传热流体与储运,Mixer,混合器,"dwsim_unitop_add/connect/get_results; /api/calculate 未接入",纯水单液相,"2路入口: K,Pa,kg/s",出口温度压力流量与焓,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Mixer
-A,传热流体与储运,Splitter,分流器,"dwsim_unitop_add/connect/set/get_results; OperationMode=SplitRatios; SR1",纯水单液相,"1路入口: K,Pa,kg/s; 分流比: fraction",两路出口流量与状态,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Splitter
+A,传热流体与储运,Mixer,混合器,"/api/calculate: mixer; dwsim_unitop_add/connect/get_results",纯水单液相,"2路入口: kg/h,°C,kPa(a)",出口温度压力流量与焓流残差,候选已实现·待总控复核,PASS-P1A-candidate,PENDING-total-control,p1a-candidate-runs-final.json#MIXER
+A,传热流体与储运,Splitter,分流器,"/api/calculate: splitter; OperationMode=SplitRatios; SR1",纯水单液相,"kg/h,°C,kPa(a),%",两路出口流量与状态,候选已实现·待总控复核,PASS-P1A-candidate,PENDING-total-control,p1a-candidate-runs-final.json#SPLITTER
 A,传热流体与储运,Heater,加热器,"/api/calculate: evaporation|temperature; dwsim_unitop_*",纯水液相/汽液平衡,"kg/h,°C,kPa(a),%",热负荷kW与出口状态,已接入可运行,PASS-3-real-runs,PENDING-total-control,g0-production-runs.json#EVAP-30|EVAP-60|TEMP-HEAT
 A,传热流体与储运,Cooler,冷却器,"/api/calculate: temperature; dwsim_unitop_*",纯水单液相,"kg/h,°C,kPa(a)",净吸热kW与出口状态,已接入可运行,PASS-1-real-run,PENDING-total-control,g0-production-runs.json#TEMP-COOL
 A,传热流体与储运,Pump,泵,"/api/calculate: pump; dwsim_unitop_*",纯水单液相,"kg/h,°C,kPa(a),%",轴功率kW与出口状态,已接入可运行,PASS-2-real-runs,PENDING-total-control,g0-production-runs.json#PUMP-500|PUMP-900
 A,传热流体与储运,Compressor,压缩机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
 A,传热流体与储运,Expander,膨胀机,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
-A,传热流体与储运,Valve,阀门,"dwsim_unitop_add/connect/set/get_results; CalcMode=OutletPressure; OutletPressure",纯水单液相,"K,Pa,kg/s; 出口Pa",出口温度压力流量与焓,引擎已实算·网页待接入,PASS-G0-isolated,PENDING-total-control,g0-p1a-probe.json#Valve
+A,传热流体与储运,Valve,阀门,"/api/calculate: valve; CalcMode=OutletPressure; OutletPressure",纯水单液相入口,"kg/h,°C,kPa(a)",出口温压相态与等焓残差,候选已实现·待总控复核,PASS-P1A-candidate,PENDING-total-control,p1a-candidate-runs-final.json#VALVE
 A,传热流体与储运,Pipe,管段,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
 A,传热流体与储运,HeatExchanger,换热器,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types
 A,传热流体与储运,Tank,储罐,dwsim_unitop_add/connect/set/get_results,未探测,引擎目录级,引擎目录级,HOLD-仅库存,NOT-RUN,PENDING-total-control,production-readonly.json#unit_types

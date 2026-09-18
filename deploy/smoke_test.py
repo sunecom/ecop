@@ -4,21 +4,23 @@ import base64
 import json
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base', default='http://127.0.0.1:18765')
 parser.add_argument('--origin', default='https://ecop.aitomoney.online')
+parser.add_argument('--password-file', default=str(Path(__file__).parent / 'secrets/ecop_password.txt'))
 args = parser.parse_args()
 base = args.base.rstrip('/')
 origin = args.origin.rstrip('/')
-password = (Path(__file__).parent / 'secrets/ecop_password.txt').read_text().strip()
+password = Path(args.password_file).read_text().strip()
 auth = 'Basic ' + base64.b64encode(('ecop:' + password).encode()).decode()
 
 
 def fetch(path, authenticated=True, body=None, extra=None):
-    headers = {'Host': 'ecop.aitomoney.online'}
+    headers = {'Host': urlsplit(origin).netloc}
     if authenticated: headers['Authorization'] = auth
     if body is not None: headers['Content-Type'] = 'application/json'
     headers.update(extra or {})
@@ -52,10 +54,10 @@ assert catalog['counts']['mcp_tools'] == 48
 assert catalog['counts']['unit_operations'] == 44
 assert catalog['counts']['property_packages'] == 28
 assert catalog['counts']['compounds'] >= 1500
-assert catalog['counts']['live_workflows'] == 3
+assert catalog['counts']['live_workflows'] == 6
 assert sum(group['count'] for group in catalog['tool_groups']) == 48
 assert set(module['type'] for group in catalog['unit_groups'] for module in group['modules']
-           if module['state'] == 'live') == {'Heater', 'Cooler', 'Pump'}
+           if module['state'] == 'live') == {'Heater', 'Cooler', 'Pump', 'Mixer', 'Splitter', 'Valve'}
 status, compounds = fetch('/api/compounds?q=Water')
 assert status == 200, compounds
 compounds = json.loads(compounds)

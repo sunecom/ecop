@@ -12,8 +12,12 @@ import server
 ORIGIN = os.environ['ECOP_PUBLIC_ORIGIN'].rstrip('/')
 USER = os.environ.get('ECOP_USER', 'ecop')
 PASSWORD = Path(os.environ['ECOP_PASSWORD_FILE']).read_text().strip()
-if not PASSWORD or len(PASSWORD) < 16 or not ORIGIN.startswith('https://'):
-    raise RuntimeError('Configure HTTPS public origin and a password of at least 16 characters')
+PARSED_ORIGIN = urlsplit(ORIGIN)
+LOOPBACK_CANDIDATE = (PARSED_ORIGIN.scheme == 'http' and
+                      PARSED_ORIGIN.hostname in {'127.0.0.1', 'localhost', '::1'})
+if (not PASSWORD or len(PASSWORD) < 16 or not PARSED_ORIGIN.netloc or
+        (PARSED_ORIGIN.scheme != 'https' and not LOOPBACK_CANDIDATE)):
+    raise RuntimeError('Configure HTTPS public origin or an HTTP loopback candidate origin and a password of at least 16 characters')
 
 
 def application(environ, start_response):
