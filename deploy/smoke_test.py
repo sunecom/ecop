@@ -78,13 +78,23 @@ cases = [
          inlet_pressure_kPa=101.325, outlet_pressure_kPa=500, efficiency_percent=75),
     dict(module='pump', flow_kg_h=1000, inlet_temperature_C=25,
          inlet_pressure_kPa=101.325, outlet_pressure_kPa=900, efficiency_percent=75),
+    dict(module='heat_exchanger', hot_flow_kg_h=1000, hot_inlet_temperature_C=80,
+         hot_pressure_kPa=300, cold_flow_kg_h=1200, cold_inlet_temperature_C=20,
+         cold_pressure_kPa=300, hot_outlet_temperature_C=50),
+    dict(module='compressor', flow_kg_h=1000, inlet_temperature_C=200,
+         inlet_pressure_kPa=200, outlet_pressure_kPa=500, efficiency_percent=75),
+    dict(module='vessel', flow_kg_h=1000, inlet_temperature_C=25,
+         pressure_kPa=200, feed_vapor_percent=30),
 ]
 for inputs in cases:
     status, result = fetch('/api/calculate', body=inputs, extra=headers)
     assert status == 200, result
     data = json.loads(result)
     r = data['results']
-    assert abs(r['mass_residual_kg_h']) < 1e-5
+    if data['module']['id'] == 'heat_exchanger':
+        assert max(abs(r['hot_mass_residual_kg_h']), abs(r['cold_mass_residual_kg_h'])) < 1e-5
+    else:
+        assert abs(r['mass_residual_kg_h']) < 1e-5
     records.append({k: data[k] for k in ['run_id', 'time', 'module', 'engine', 'commit',
                                          'inputs', 'results', 'comparison']})
 assert abs(records[0]['results']['vapor_kg_h'] - 300) < 1e-5
@@ -98,8 +108,18 @@ assert abs(records[2]['results']['outlet_temperature_C'] - 60) < 0.02
 assert abs(records[3]['results']['outlet_temperature_C'] - 25) < 0.02
 assert abs(records[4]['results']['outlet_pressure_kPa'] - 500) < 0.02
 assert records[5]['comparison']['value'] > records[4]['comparison']['value']
+assert abs(records[6]['results']['hot_outlet_temperature_C'] - 50) < 0.02
+assert max(abs(records[6]['results']['hot_pressure_drop_kPa']),
+           abs(records[6]['results']['cold_pressure_drop_kPa'])) <= 0.02
+assert records[6]['results']['heat_balance_relative'] < 1e-4
+assert abs(records[7]['results']['outlet_pressure_kPa'] - 500) < 0.02
+assert records[7]['results']['outlet_vapor_fraction'] > 0.999999
+assert records[7]['results']['power_residual_relative'] < 1e-4
+assert abs(records[8]['results']['vapor_product_kg_h'] - 300) < 1e-5
+assert abs(records[8]['results']['liquid_product_kg_h'] - 700) < 1e-5
+assert records[8]['results']['max_pressure_residual_kPa'] <= 0.02
 assert fetch('/api/calculate', body={}, extra=headers)[0] == 400
 assert fetch('/api/calculate', body=inputs, extra=dict(headers, Origin='https://evil.example'))[0] == 403
 print(json.dumps({'passed': True, 'checks': ['auth', 'page', 'engine', 'catalog', 'compound_search',
-                                          'six_real_calculations', 'invalid_input', 'cross_origin'],
+                                          'nine_real_calculations', 'invalid_input', 'cross_origin'],
                   'runs': records}, indent=2))

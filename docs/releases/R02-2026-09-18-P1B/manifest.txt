@@ -1,0 +1,10 @@
+release=R02-P1B
+application_commit=f0e89146e27b136bc08dfd0e7e21b9c0b09de76d
+web_image=sha256:6932a71e0f3e3701dc8666811f6d1faaaa92120c00be5e17f7ecc59645d7ff8e
+web_started=2026-09-18T14:56:40.760374577Z
+backup_dir=/opt/ecop/.rollback/r02-20260918T145528Z
+rollback_tag=ecop-web:rollback-r02-20260918T145528Z
+dwsim_image=sha256:ce00bf065a3d5f1160d24934527b45822a22a3020745ff5a4ce1ffb7b796cacf
+dwsim_started=2026-09-18T04:16:21.50725706Z
+production_status=deployed-self-test-pass
+next_gate=controller-online-acceptance
