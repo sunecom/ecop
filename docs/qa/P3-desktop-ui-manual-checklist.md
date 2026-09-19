@@ -7,7 +7,7 @@
 - DWSIM：`D:\AiToMoney\tools\DWSIM-10.2.8\DWSIM.UI.Desktop.Avalonia.exe`；文件版本 `10.2.8.0`；SHA-256 `bfafafafd9cd1ef1bc2213d582b346b52bebc8f3dcf3c938498bbb42f23774fc`。
 - 打开此已验导出：`C:\Users\gao\.codex\worktrees\f815\ECOP企业方案agent\.local\qa\P3\desktop\p3-browser-export.dwxml`；SHA-256 `b1042b7d502b2d9aa70256742ba6b50c59002c79f5e9ba952d4ddca46692a105`。
 - 验收前先核对上述两个 SHA-256；不一致立即停止并记录，不得继续使用未知文件。
-- 新建证据目录：`C:\Users\gao\.codex\worktrees\f815\ECOP企业方案agent\.local\qa\P3\desktop\manual`。原始 `.dwxml` 只读使用，禁止覆盖。
+- 输出目录：`D:\codex\workspace\项目分类\FDE项目\ECOP企业方案agent\.local\qa\P3\desktop\manual`。原始 `.dwxml` 保持在上述输入路径，只读使用，禁止移动或覆盖。
 
 ## 2. 可见 UI 操作
 
@@ -33,4 +33,4 @@
 
 - `01-open.png`：完整 DWSIM 窗口、文件标题和流程图；`02-baseline-recalculated.png`：基准重算后的目标、出口分率与热负荷；`03-target-055.png`：可见 UI 中 `EV-01` 目标改为 `0.55`；`04-changed-recalculated.png`：改参重算后的出口分率、热负荷和已计算状态；`05-reopened-save-as.png`：另存文件重新打开后的文件标题与复算结果。
 - 另存 `.dwxml`、五张原始截图、DWSIM 可执行文件和输入文件分别计算 SHA-256；记录测试人、开始/结束时间、DWSIM 文件版本、所有读数、求解错误列表（应为空）及最终 `PASS/FAIL`。
-- 将记录写入同目录 `P3-desktop-ui-manual-evidence.json`，不得只在聊天中口头确认。只有上述证据齐全且全部满足容差，才可关闭 `DESKTOP UI BLOCKED`；仍需总控独立判定，不自动放行生产或 P4。
+- 将记录写入输出目录的 `P3-desktop-ui-manual-evidence.json`，至少包含：`schema_version`、`tester`、`started_at`、`completed_at`、`verdict`、`dwsim_executable`、`dwsim_version`、`dwsim_sha256`、`input_path`、`input_sha256`、`baseline`、`changed_target`、`tolerances`、`saved_dwxml_path`、`saved_dwxml_sha256`、`screenshots`、`solver_errors`。不得只在聊天中口头确认。只有上述证据齐全且全部满足容差，才可关闭 `DESKTOP UI BLOCKED`；仍需总控独立判定，不自动放行生产或 P4。
