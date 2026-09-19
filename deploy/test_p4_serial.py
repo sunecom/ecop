@@ -52,10 +52,14 @@ class ReplayTool:
         self.units = {name: {'calculated': True} for name in ('H-01', 'EV-01', 'V-01')}
         self.calls = []
         self.solve_ok = True
+        self.preheat_guard = False
+        self.guard_vapor_fraction = 0
 
     def __call__(self, tool_name, **kwargs):
         self.calls.append((tool_name, kwargs))
         if tool_name == 'dwsim_stream_get_results':
+            if kwargs['name'] == 'PREHEATED' and self.preheat_guard:
+                return stream(1000, 72, 101.325, 301.43, self.guard_vapor_fraction)
             return self.streams[kwargs['name']]
         if tool_name == 'dwsim_flowsheet_check':
             return {'ready': True}
@@ -67,6 +71,8 @@ class ReplayTool:
         if tool_name == 'dwsim_unitop_get_results':
             return self.units[kwargs['name']]
         if tool_name == 'dwsim_unitop_set':
+            if kwargs['name'] == 'H-01':
+                self.preheat_guard = kwargs['properties']['OutletTemperature'] > 343.15
             return {'applied': kwargs['properties']}
         return {}
 
@@ -84,11 +90,11 @@ class P4SerialTests(unittest.TestCase):
             with self.subTest(payload=payload), self.assertRaises(ValueError):
                 server.validate(payload)
 
-    def test_serial_topology_uses_one_solve_and_returns_closure_evidence(self):
+    def test_serial_topology_uses_guard_and_final_solve_with_closure_evidence(self):
         tool = ReplayTool()
         result = p4_serial.run(server.validate(SAMPLE), tool)
         connections = [kwargs for name, kwargs in tool.calls if name == 'dwsim_unitop_connect']
-        self.assertEqual(sum(name == 'dwsim_solve_run' for name, _ in tool.calls), 1)
+        self.assertEqual(sum(name == 'dwsim_solve_run' for name, _ in tool.calls), 2)
         self.assertEqual([item['unitop'] for item in connections], ['H-01', 'EV-01', 'V-01', 'V-01'])
         self.assertAlmostEqual(result['results']['preheat_heat_duty_kW'], 52.26277777777778)
         self.assertAlmostEqual(result['results']['vapor_product_kg_h'], 300)
@@ -100,8 +106,8 @@ class P4SerialTests(unittest.TestCase):
 
     def test_rejects_preheat_that_enters_vapor_region(self):
         tool = ReplayTool()
-        tool.streams['PREHEATED']['phases'][1]['fraction'] = 0.001
-        with self.assertRaisesRegex(RuntimeError, '预热出口出现汽相'):
+        tool.guard_vapor_fraction = 0.001
+        with self.assertRaisesRegex(RuntimeError, '泡点至少 2 °C 裕量'):
             p4_serial.run(server.validate(SAMPLE), tool)
 
     def test_rejects_failed_solve_or_nonfinite_result(self):

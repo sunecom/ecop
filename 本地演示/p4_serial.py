@@ -74,7 +74,6 @@ def run(values, tool):
         'DeltaP': 0,
         'Eficiencia': 100,
     }
-    tool('dwsim_unitop_set', name='H-01', properties=preheat_properties)
     tool('dwsim_unitop_add', type='Heater', name='EV-01')
     tool('dwsim_unitop_connect', unitop='EV-01', feed_stream='PREHEATED',
          product_stream='TWO-PHASE')
@@ -90,6 +89,17 @@ def run(values, tool):
          product_stream='VAPOR', product_port=0)
     tool('dwsim_unitop_connect', unitop='V-01', product_stream='LIQUID', product_port=1)
     required = {'FEED', 'PREHEATED', 'TWO-PHASE', 'VAPOR', 'LIQUID', 'H-01', 'EV-01', 'V-01'}
+    preheat_guard_properties = {**preheat_properties,
+                                'OutletTemperature': preheat_properties['OutletTemperature'] + 2}
+    tool('dwsim_unitop_set', name='H-01', properties=preheat_guard_properties)
+    guard_check, guard_solved, _ = solve(tool, 'V-01', required)
+    guard_preheated = stream_state('预热泡点裕量守卫',
+                                   tool('dwsim_stream_get_results', name='PREHEATED'))
+    if abs(guard_preheated['temperature_K'] - preheat_guard_properties['OutletTemperature']) > TEMPERATURE_TOLERANCE_C:
+        raise RuntimeError('预热泡点裕量守卫未达到引擎目标温度')
+    if guard_preheated['vapor_fraction'] > 1e-6:
+        raise RuntimeError('预热目标温度未保持同压力泡点至少 2 °C 裕量')
+    tool('dwsim_unitop_set', name='H-01', properties=preheat_properties)
     check, solved, vessel_unit = solve(tool, 'V-01', required)
     units = {
         'H-01': tool('dwsim_unitop_get_results', name='H-01'),
@@ -103,7 +113,7 @@ def run(values, tool):
     feed, preheated, two_phase = streams['FEED'], streams['PREHEATED'], streams['TWO-PHASE']
     vapor, liquid = streams['VAPOR'], streams['LIQUID']
     if preheated['vapor_fraction'] > 1e-6:
-        raise RuntimeError('预热出口出现汽相，未满足同压力泡点至少 2 °C 裕量')
+        raise RuntimeError('预热出口出现汽相')
     if abs(preheated['temperature_K'] - (values['preheat_temperature_C'] + 273.15)) > TEMPERATURE_TOLERANCE_C:
         raise RuntimeError('预热出口温度未达到目标')
     if any(abs(streams[name]['pressure_Pa'] / 1000 - values['pressure_kPa']) > PRESSURE_TOLERANCE_KPA
@@ -172,6 +182,12 @@ def run(values, tool):
             'units': {name: {'calculated': bool(unit.get('calculated'))} for name, unit in units.items()},
             'check': {'ready': bool(check.get('ready'))},
             'solve': {'ok': bool(solved.get('ok')), 'calculated_objects': sorted(required)},
+            'preheat_bubble_guard': {
+                'temperature_K': guard_preheated['temperature_K'],
+                'vapor_fraction': guard_preheated['vapor_fraction'],
+                'check_ready': bool(guard_check.get('ready')),
+                'solve_ok': bool(guard_solved.get('ok')),
+            },
             'applied': {'H-01': preheat_properties, 'EV-01': evaporation_properties},
         },
     }
