@@ -154,5 +154,23 @@
     engineStatus();loadCatalog();
   </script>
   <script src="/project_ui.js"></script>
+  <script>
+    modules.preheat_evap_separator={unit:'H-01 + EV-01 + V-01',feed:'FEED<br><small>纯水入口</small>',product:'VAPOR + LIQUID<br><small>汽液产品</small>',metrics:[['H-01 热负荷','preheat_heat_duty_kW','kW'],['EV-01 热负荷','evaporation_heat_duty_kW','kW'],['汽相产品','vapor_product_kg_h','kg/h']]};
+    const p4Tab=document.createElement('button');
+    p4Tab.className='workbench-tab';p4Tab.dataset.module='preheat_evap_separator';
+    p4Tab.innerHTML='<strong>预热—蒸发—分离</strong><span>H-01 + EV-01 + V-01 · 固定串联</span>';
+    document.querySelector('.workbench-tabs').append(p4Tab);
+    const p4Form=document.createElement('form');
+    p4Form.className='calc-form';p4Form.dataset.module='preheat_evap_separator';
+    p4Form.innerHTML='<h3>预热—蒸发—汽液分离固定模板</h3><label><span class="input-label">进料流量 <span>kg/h</span></span><input data-key="flow_kg_h" type="number" value="1000" min="10" max="100000" step="any" required></label><label><span class="input-label">进料温度 <span>°C</span></span><input data-key="feed_temperature_C" type="number" value="25" min="5" max="80" step="any" required></label><label><span class="input-label">运行绝对压力 <span>kPa(a)</span></span><input data-key="pressure_kPa" type="number" value="101.325" min="60" max="1000" step="any" required></label><label><span class="input-label">预热目标温度 <span>°C</span></span><input data-key="preheat_temperature_C" type="number" value="70" min="7" max="300" step="any" required><small class="range-note">至少高于进料 2 °C；引擎求解后必须保持单液相。</small></label><label><span class="input-label">目标汽化比例 <span>%</span></span><input data-key="vapor_percent" type="number" value="30" min="5" max="80" step="any" required></label><button class="primary" type="submit">运行真实串联计算 →</button><p class="assumption">固定纯水 Steam Tables 流程 · 单一 DWSIM flowsheet · 零压降<br>依次展示 FEED、PREHEATED、TWO-PHASE、VAPOR、LIQUID 和三台设备的校核结果。</p>';
+    document.querySelector('.inputs').append(p4Form);
+    const p4Rows=data=>{const r=data.results,s=data.raw.streams;return[['物性方法',data.property_package],['固定拓扑',data.raw.topology],['H-01 / EV-01 / V-01 状态','已联算 / 已联算 / 已联算'],['FEED → PREHEATED',`${fmt(s.FEED.temperature_K-273.15)} → ${fmt(s.PREHEATED.temperature_K-273.15)} °C · 汽相 ${fmt(s.PREHEATED.vapor_fraction,6)}`],['TWO-PHASE','汽相分率 '+fmt(s['TWO-PHASE'].vapor_fraction,6)+` · ${fmt(s['TWO-PHASE'].mass_flow_kg_s*3600)} kg/h`],['VAPOR / LIQUID',`${fmt(r.vapor_product_kg_h)} / ${fmt(r.liquid_product_kg_h)} kg/h · 相态 ${fmt(r.vapor_product_vapor_fraction,6)} / ${fmt(r.liquid_product_vapor_fraction,6)}`],['V-01 能量相对残差',fmt(r.vessel_energy_residual_relative,9)],['全流程质量残差',`${fmt(r.overall_mass_residual_kg_h,6)} kg/h`],['校核状态','预热单液相、目标汽化、汽液纯度、质量与能量衡算通过'],['计算时间',`${data.elapsed_s} s`]]};
+    const p4LegacyRows=resultRows,p4LegacySummary=conditionSummary;
+    resultRows=data=>data.module.id==='preheat_evap_separator'?p4Rows(data):p4LegacyRows(data);
+    conditionSummary=data=>data.module.id==='preheat_evap_separator'?`${fmt(data.inputs.flow_kg_h)} kg/h · ${fmt(data.inputs.feed_temperature_C)}→${fmt(data.inputs.preheat_temperature_C)} °C · ${fmt(data.inputs.vapor_percent)}% 汽化`:p4LegacySummary(data);
+    p4Tab.addEventListener('click',()=>selectModule('preheat_evap_separator'));
+    p4Form.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>clearCurrent()));
+    p4Form.addEventListener('submit',async event=>{event.preventDefault();const payload=activeInputs(),controls=[...p4Form.querySelectorAll('input,button')],button=p4Form.querySelector('button[type="submit"]');controls.forEach(control=>control.disabled=true);button.textContent='DWSIM 串联求解中…';clearCurrent('正在创建单一固定流程、联算并校核…');try{const response=await fetch('/api/calculate',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Token':NONCE},body:JSON.stringify(payload)}),data=await response.json();if(!response.ok)throw Error(data.error||'计算失败');renderResult(data);history.push(data);renderHistory()}catch(error){$('message').className='message error';$('message').textContent=`计算未完成：${error.message}`}finally{controls.forEach(control=>control.disabled=false);button.textContent='运行真实串联计算 →';engineStatus()}});
+  </script>
 </body>
 </html>

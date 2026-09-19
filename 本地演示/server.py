@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 import json, math, threading, time, uuid, secrets, os
-import advanced_units, basic_units, catalog, material_systems
+import advanced_units, basic_units, catalog, material_systems, p4_serial
 
 BASE = Path(__file__).resolve().parent
 PORT = 18765
@@ -87,6 +87,9 @@ def validate(data):
     advanced_values = advanced_units.validate(data, number)
     if advanced_values is not None:
         return advanced_values
+    p4_values = p4_serial.validate(data, number)
+    if p4_values is not None:
+        return p4_values
     material_values = material_systems.validate(data, number)
     if material_values is not None:
         return material_values
@@ -139,7 +142,7 @@ def get_catalog():
                 'unit_operations': len(unit_types),
                 'property_packages': len(packages),
                 'compounds': compounds.get('count', len(COMPOUND_CACHE)),
-                'live_workflows': 10,
+                'live_workflows': 11,
             },
             'tool_groups': tool_groups,
             'mcp_tools': tool_records,
@@ -214,6 +217,7 @@ def calculate(data, export_path=None, persist_result=True):
             **basic_units.DEFINITIONS,
             **advanced_units.DEFINITIONS,
             **material_systems.DEFINITIONS,
+            **p4_serial.DEFINITIONS,
         }
         if module in special_definitions:
             definition = special_definitions[module]
@@ -269,6 +273,8 @@ def calculate(data, export_path=None, persist_result=True):
                 workflow = basic_units.run(values, tool)
             elif module in advanced_units.DEFINITIONS:
                 workflow = advanced_units.run(values, tool)
+            elif module in p4_serial.DEFINITIONS:
+                workflow = p4_serial.run(values, tool)
             else:
                 workflow = material_systems.run(values, tool)
             result = {

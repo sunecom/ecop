@@ -290,6 +290,18 @@ def build_unit_groups(available_types):
             if live:
                 module.update(live_modules[type_name])
             modules.append(module)
+        if group['id'] == 'transport' and {'Heater', 'Vessel'}.issubset(available):
+            modules.append({
+                'type': 'P4 Serial Template',
+                'name': '预热—蒸发—汽液分离固定模板',
+                'summary': '同一 DWSIM flowsheet 串联预热、目标汽化和真实气液分离。',
+                'state': 'live',
+                'inputs': ['纯水流量与入口状态', '预热目标温度', '目标汽化比例'],
+                'outputs': ['中间物流状态', '两段热负荷', '汽液产品与全流程衡算'],
+                'scenarios': ['固定串联预热、蒸发与气液分离'],
+                'route': '#workbench',
+                'workspace_mode': 'preheat_evap_separator',
+            })
         groups.append({**{key: value for key, value in group.items() if key != 'types'},
                        'count': len(modules), 'modules': modules})
     return groups

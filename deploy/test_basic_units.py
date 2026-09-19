@@ -111,14 +111,14 @@ class BasicUnitContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             server.validate({'module': 'arbitrary-unit-operation'})
 
-    def test_catalog_exposes_exactly_nine_live_unit_types(self):
+    def test_catalog_exposes_p4_serial_template_with_live_unit_types(self):
         groups = catalog.build_unit_groups([
             'Mixer', 'Splitter', 'Heater', 'Cooler', 'Pump', 'Valve', 'HeatExchanger',
             'Compressor', 'Vessel', 'Pipe'])
         live = {module['type'] for group in groups for module in group['modules']
                 if module['state'] == 'live'}
         self.assertEqual(live, {'Mixer', 'Splitter', 'Heater', 'Cooler', 'Pump', 'Valve',
-                                'HeatExchanger', 'Compressor', 'Vessel'})
+                                'HeatExchanger', 'Compressor', 'Vessel', 'P4 Serial Template'})
 
     def test_engine_nonfinite_values_are_rejected_by_all_new_workflows(self):
         mixer_streams = {
