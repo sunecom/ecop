@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172722">
+  <title>ECOP · 业务项目工作台</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="workspace-layout.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/workflow/" aria-label="ECOP 业务项目首页">
+        <span class="brand-mark">E</span>
+        <span class="brand-word">ECOP<span>WORKFLOW</span></span>
+      </a>
+      <div class="topbar-center"><span class="live-dot"></span><span id="workflow-context">业务项目</span> <span class="topbar-divider">/</span><button id="project-home-button" class="topbar-home" type="button" hidden>项目首页</button><select id="project-select" class="project-select" aria-label="选择或恢复项目" hidden></select><span id="project-title">请选择项目</span></div>
+      <div class="topbar-right">
+        <span class="revision-pill">项目版本 <strong id="project-revision">v1</strong></span>
+        <span id="mode-pill" class="demo-pill">SYNTHETIC PREVIEW</span>
+        <span id="data-source-pill" class="context-pill" hidden></span>
+        <span id="execution-pill" class="context-pill" hidden></span>
+      </div>
+    </header>
+
+    <main id="project-home" class="project-home">
+      <div class="business-home-head">
+        <div><span class="section-kicker">CUSTOMER ENGINEERING WORKSPACE</span><h1>项目首页</h1><p>创建真实业务项目，录入设计条件并保存为可追溯版本。</p></div>
+        <span id="business-account-note" class="account-boundary">项目权限由服务端认证与成员授权确定。</span>
+      </div>
+      <div id="home-notice" class="notice" hidden></div>
+      <section class="project-create-card">
+        <div class="section-title"><div><span class="section-kicker">START A PROJECT</span><h2>新建项目</h2></div></div>
+        <label class="project-name-label" for="new-project-name">项目名称</label>
+        <input id="new-project-name" class="project-name-input" maxlength="120" autocomplete="off" placeholder="例如：麦芽糖醇浓缩项目">
+        <div class="project-create-actions">
+          <button id="create-empty-project" class="button button-primary" type="button">新建空白项目</button>
+          <button id="create-source-project" class="button button-secondary" type="button" hidden>从现有麦芽糖醇资料创建工作副本</button>
+        </div>
+        <p id="source-template-note" class="source-template-note" hidden>源快照只读保留；工作副本可编辑并独立生成新版本。</p>
+      </section>
+      <section class="project-list-card">
+        <div class="section-title"><div><span class="section-kicker">SAVED PROJECTS</span><h2>继续项目</h2></div><span id="project-list-count" class="count-badge">0</span></div>
+        <div id="business-project-list" class="business-project-list"></div>
+      </section>
+      <div class="home-footer-links"><a id="synthetic-demo-link" href="/workflow/synthetic/">进入隔离的合成测试入口</a></div>
+    </main>
+
+    <main id="workflow" class="workspace" hidden>
+      <button id="workspace-menu-toggle" class="button workspace-menu-toggle" type="button" aria-expanded="false" aria-controls="workspace-navigation">项目导航与记录</button>
+      <aside id="workspace-navigation" class="workflow-rail" aria-label="六步流程">
+          <div class="rail-heading"><span>项目流程</span><span class="rail-count">06</span></div>
+        <button id="project-overview-button" class="overview-button" type="button">项目总览</button>
+        <nav id="stage-nav" class="stage-nav"></nav>
+        <div class="rail-records"><details class="rail-details"><summary>资料来源与边界</summary>        <section id="case-provenance" class="case-provenance" hidden aria-label="项目来源与计算状态">
+          <div class="case-provenance-head"><strong id="case-provenance-title">客户来源数据 · 可编辑工作副本</strong><span>原始来源值保留；修改值进入新版本</span></div>
+          <div class="case-provenance-grid">
+            <div><span>资料来源</span><strong id="case-source-label">—</strong></div>
+            <div><span>执行状态</span><strong id="case-execution-label">—</strong></div>
+            <div><span>工作流身份</span><strong id="case-auth-label">—</strong></div>
+          </div>
+          <p id="case-source-summary" class="case-source-summary"></p>
+          <p id="case-source-limit" class="case-source-limit"></p>
+          <p id="case-missing-summary" class="case-missing-summary"></p>
+          <ul id="case-missing-fields" class="case-missing-fields"></ul>
+        </section></details><details class="rail-details"><summary>项目成员与权限</summary>        <section id="business-members" class="business-members" hidden aria-label="项目协作成员">
+          <div class="section-title"><div><span class="section-kicker">PROJECT ACCESS</span><h2>协作成员</h2></div><span id="business-member-count" class="count-badge">0</span></div>
+          <ul id="business-member-list" class="business-member-list"></ul>
+          <div id="business-member-manager" class="business-member-manager" hidden>
+            <label for="business-member-user">添加已配置的独立账号<select id="business-member-user"></select></label>
+            <label for="business-member-role">项目角色<select id="business-member-role"><option value="reviewer">审核人</option><option value="engineer">工程师</option></select></label>
+            <button id="business-member-add" class="button button-secondary" type="button">添加成员</button>
+          </div>
+          <p id="business-member-note" class="business-member-note">权限基于独立站点身份；不能通过页面切换他人角色。</p>
+        </section></details><details class="rail-details"><summary>上游依赖</summary><section class="insight-card dependency-card">
+          <div class="insight-head"><span class="insight-icon">↗</span><div><span class="section-kicker">DEPENDENCIES</span><h2>上游依赖</h2></div></div>
+          <div id="dependencies-list" class="dependencies-list"></div>
+          <p class="insight-foot">上游版本变化时，下游阶段需要重新核对。</p>
+        </section></details><details class="rail-details"><summary>阶段版本</summary><section class="insight-card version-card">
+          <div class="insight-head"><span class="insight-icon icon-sand">◷</span><div><span class="section-kicker">VERSION TRAIL</span><h2>阶段版本</h2></div></div>
+          <div id="stage-history" class="stage-history"></div>
+        </section></details><details class="rail-details legacy-export"><summary>统一导出</summary><section class="insight-card export-card">
+          <div class="insight-head"><span class="insight-icon icon-export">↧</span><div><span class="section-kicker">CONSISTENT SNAPSHOT</span><h2>统一导出</h2></div></div>
+          <p id="export-copy" class="export-copy">六个阶段全部确认后，负责人可冻结同一项目版本快照。</p>
+          <button id="export-button" class="button button-dark" type="button">冻结并导出 <span>↗</span></button>
+          <button id="download-export" class="button button-outline" type="button" hidden>下载冻结快照 <span>↓</span></button>
+            <div id="export-meta" class="export-meta" hidden></div>
+            <div id="delivery-review-tools" hidden>
+              <p>真实计算评审草稿 · 设备适配待核</p>
+              <button class="button button-outline" type="button" data-delivery-id="technical-proposal">下载技术方案评审稿</button>
+              <button class="button button-outline" type="button" data-delivery-id="calculation-book">下载计算依据与结果</button>
+              <button class="button button-outline" type="button" data-delivery-id="equipment-parameters">下载设备参数核对稿</button>
+            </div>
+          <div id="report-downloads" class="report-downloads" hidden>
+            <p class="warning-copy">TEST ONLY · MOCK · 合成草稿，非工程签发，不得用于工程决策。</p>
+            <button class="button button-outline" type="button" data-report-id="technical-proposal">下载技术方案草稿</button>
+            <button class="button button-outline" type="button" data-report-id="calculation-book">下载计算书草稿</button>
+            <button class="button button-outline" type="button" data-report-id="equipment-selection-parameters">下载设备选型参数清单</button>
+            <button class="button button-outline" type="button" data-report-id="manifest">下载报告清单（JSON）</button>
+          </div>
+        </section></details><details class="rail-details"><summary>最近活动</summary><section class="activity-card">
+          <div class="section-title"><div><span class="section-kicker">AUDIT TRAIL</span><h2>最近活动</h2></div><span class="activity-mark">●</span></div>
+          <ol id="audit-list" class="audit-list"></ol>
+        </section></details></div>
+        <div class="rail-bottom">
+          <div id="role-mode-label" class="rail-label">本机测试身份</div>
+          <label id="role-select-container" class="role-select-wrap" for="role-select">
+            <span id="role-initial" class="avatar avatar-customer">客</span>
+            <select id="role-select" aria-label="切换模拟角色">
+              <option value="demo-customer">客户 · 演示账号</option>
+              <option value="demo-engineer">工程师 · 演示账号</option>
+              <option value="demo-reviewer">审核人 · 演示账号</option>
+              <option value="demo-lead">负责人 · 演示账号</option>
+            </select>
+            <span class="select-chevron">⌄</span>
+          </label>
+          <p id="role-mode-note" class="simulation-note">测试模式仅用于本机闭环验证；不代表已接入真实身份系统。</p>
+        </div>
+      </aside>
+
+      <section class="stage-column" aria-live="polite">
+        <div class="breadcrumbs"><span>工作台</span><span class="crumb-slash">/</span><span>工程协作</span><span class="crumb-slash">/</span><strong id="breadcrumb-stage">需求定义</strong></div>
+        <div id="notice" class="notice" hidden></div>
+
+        <section id="workspace-overview" hidden></section>
+        <div id="workspace-stage-heading" class="stage-heading">
+          <div>
+            <div class="eyebrow"><span id="stage-number">STEP 01</span><span class="eyebrow-line"></span><span id="stage-audience">CUSTOMER INPUT</span></div>
+            <h1 id="stage-title">需求定义</h1>
+            <p id="stage-description" class="stage-description"></p>
+          </div>
+          <div class="stage-state-card">
+            <span class="state-caption">当前状态</span>
+            <span id="stage-status" class="status-badge status-draft">草稿</span>
+            <span id="stage-revision" class="stage-rev">阶段 r1</span>
+          </div>
+        </div>
+        <p id="stage-return-reason" class="stage-return-reason" hidden></p>
+
+        <section id="workspace-business-content" hidden></section>
+        <section id="taskbook-panel" class="taskbook-panel" hidden aria-label="设计任务书提交"></section>
+
+
+        <section id="case-pfd-preview" class="case-pfd-preview" hidden aria-label="客户来源 PFD 草稿预览">
+          <div class="section-title"><div><span class="section-kicker">READ-ONLY PFD</span><h2>流程图草稿</h2></div><span class="pfd-draft-badge">未校核</span></div>
+          <div class="case-pfd-canvas"><svg id="case-pfd-svg" role="img" aria-label="只读 PFD 草稿"></svg></div>
+          <p id="case-pfd-note" class="case-source-limit"></p>
+        </section>
+
+        <details id="workspace-advanced" class="work-advanced"><summary>阶段版本与高级编辑</summary>
+        <div class="payload-card">
+          <div class="card-head">
+            <div><span class="card-index">01</span><div><h2 id="payload-heading">阶段资料</h2><p>结构化阶段记录 · 编辑后保存新版本</p></div></div>
+            <span id="edit-permission" class="permission-chip">可编辑</span>
+          </div>
+          <section id="business-requirements-form" class="business-requirements-form" hidden aria-label="结构化项目条件">
+            <div class="requirements-form-head"><strong>项目与工艺条件</strong><span id="requirements-save-state" class="requirements-save-state">已从服务端加载</span><button id="discard-requirements-draft" class="button button-quiet" type="button" hidden>放弃本页修改</button></div>
+            <label class="field-label project-field-label" for="business-project-name">项目名称<input id="business-project-name" maxlength="120" autocomplete="off"></label>
+            <div id="requirements-fields" class="requirements-fields"></div>
+            <p id="requirements-missing" class="requirements-missing"></p>
+            <p class="requirements-source-note">修改值会与只读源快照中的原值、单位和来源位置分开保存。缺项留空，不默认填 0，也不推断浓度基准。</p>
+          </section>
+          <label class="sr-only" for="payload-editor">阶段资料 JSON</label>
+          <textarea id="payload-editor" spellcheck="false" aria-describedby="payload-help"></textarea>
+          <div class="editor-foot"><span id="payload-help">保存将写入项目版本，并保留先前需求快照。</span><span id="payload-format">JSON · UTF-8</span></div>
+          <div id="calculation-tools" class="calc-tools" hidden>
+            <div class="calc-note"><span class="calc-spark">✳</span><span>计算阶段只运行合成路径，不调用工程软件或真实引擎。</span></div>
+            <button id="calc-run" class="button button-quiet" type="button" hidden>运行模拟计算</button>
+            <button id="calc-fail" class="button button-quiet button-danger" type="button">模拟计算失败</button>
+          </div>
+          <div id="customer-calculation-guard" class="customer-calculation-guard" hidden>此业务项目必须调用已验证的真实工程模块；工作流当前尚未连接适用于本项目的真实计算适配器，合成结果不会写入客户项目。</div>
+        </div>
+
+        <label id="return-reason-wrap" class="field-label return-reason-wrap" for="return-reason" hidden>退回理由<input id="return-reason" maxlength="500" placeholder="说明需修改的具体条件" autocomplete="off"></label>
+        <div class="action-row">
+          <div class="primary-actions">
+            <button id="save-button" class="button button-primary" type="button"><span class="button-icon">↳</span>保存草稿</button>
+            <button id="submit-button" class="button button-secondary" type="button">提交审核 <span>→</span></button>
+            <button id="confirm-button" class="button button-primary button-confirm" type="button">确认此阶段 <span>✓</span></button>
+            <button id="return-button" class="button button-quiet" type="button">退回修改 <span>↩</span></button>
+          </div>
+          <span class="revision-hint">写入前校验当前项目版本</span>
+        </div>
+
+        </details>
+        <section id="workspace-comments" class="comments-card">
+          <div class="section-title"><div><span class="section-kicker">DISCUSSION</span><h2>阶段评论</h2></div><span id="comment-count" class="count-badge">0</span></div>
+          <div id="comments-list" class="comments-list"></div>
+          <form id="comment-form" class="comment-form">
+            <label class="sr-only" for="comment-input">添加评论</label>
+            <input id="comment-input" maxlength="500" placeholder="留下一条阶段评论…" autocomplete="off">
+            <button id="comment-button" class="button button-quiet" type="submit">发送 <span>↗</span></button>
+          </form>
+        </section>
+      </section>
+
+
+    </main>
+
+    <footer class="footer"><span>ECOP WORKFLOW <b>业务项目</b></span><span id="footer-context">真实项目输入与执行模式分开记录</span><a href="/workflow/">项目首页 ↑</a></footer>
+  </div>
+  <script src="workflow-engine.js"></script>
+  <script src="synthetic-adapter.js"></script>
+  <script src="workflow-controller.js"></script>
+  <script src="workflow-config.js"></script>
+  <script src="http-adapter.js"></script>
+  <script src="requirements-schema.js"></script>
+  <script src="business-ui-copy.js"></script>
+  <script src="taskbook-ui.js"></script>
+  <script src="workflow-view.js"></script>
+  <script src="workspace-ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
