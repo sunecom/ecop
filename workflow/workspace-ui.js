@@ -1,7 +1,7 @@
 (function(root) {
   'use strict';
   const V=root.ECOPWorkflowView, byId=id=>document.getElementById(id);
-  let context=null,key='',serial=0,activeView='overview',reviews=[],delivery=null;
+  let context=null,key='',serial=0,activeView='overview',reviews=[],delivery=null,reviewDrafts=null,reviewDraftsError='',advisories=[],advisoriesError='';
   let states={reviews:'idle',delivery:'idle'},errors={},busy=false,message='',abort=null,operation=0;
   const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n;};
   function button(text,fn,disabled=false,secondary=false){const b=node('button',text,secondary?'button button-secondary':'button button-primary');b.type='button';b.disabled=disabled;b.addEventListener('click',fn);return b;}
@@ -23,10 +23,13 @@
     const c=context,expected=`${c.project.project_id}:${c.project.revision}`;
     if(!force && expected===key)return;
     key=expected;const own=++serial;abort?.abort();abort=new AbortController();
-    reviews=[];delivery=null;errors={};states={reviews:'loading',delivery:c.project.delivery_review_available?'loading':'missing'};draw();
+    reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';advisories=[];advisoriesError='';errors={};states={reviews:'loading',delivery:c.project.delivery_review_available?'loading':'missing'};draw();
     const tasks=[request(c,'manual-review',undefined,abort.signal).then(data=>{if(!Array.isArray(data.reviews))throw Error('交互记录格式不正确。');return data.reviews;})];
     tasks.push(c.project.delivery_review_available&&c.adapter.getDeliveryReview?c.adapter.getDeliveryReview(c.project.project_id):Promise.resolve(null));
-    const [a,b]=await Promise.allSettled(tasks);
+    tasks.push(c.adapter.listReviewDrafts?c.adapter.listReviewDrafts(c.project.project_id):Promise.resolve(null));
+    // 仅展示工程建议：读取失败不阻塞主加载（与评审草稿同一非致命风格）。
+    tasks.push(request(c,'advisories',undefined,abort.signal).then(data=>{if(!Array.isArray(data.advisories))throw Error('工程建议格式不正确。');return data.advisories;}));
+    const [a,b,d,adv]=await Promise.allSettled(tasks);
     if(own!==serial || key!==expected)return;
     if((a.status==='rejected'&&[401,403].includes(a.reason.status))||(b.status==='fulfilled'&&b.value?.error?.code==='FORBIDDEN')){
       reviews=[];delivery=null;states={reviews:'error',delivery:'error'};errors={auth:'项目访问权限已失效，请重新登录或核对权限。'};draw();return;
@@ -40,6 +43,32 @@
       if(b.value.review.status==='local_review_snapshot')V.validateBundle(b.value,c.project);
       delivery=b.value;states.delivery='loaded';
     }catch(e){states.delivery='error';errors.delivery=e.message;}
+    // 处理 reviewDrafts 结果
+    if(d.status==='fulfilled' && d.value!==null){
+      const data=d.value;
+      if(!data.ok){
+        const code=data.error?.code||'';
+        if(code==='DELIVERY_PROJECT_CHANGED'){reviewDrafts=null;reviewDraftsError='项目版本已更新，评审草稿清单待重新登记。';}
+        else if(code==='REVIEW_DRAFTS_NOT_FOUND'){reviewDrafts=null;reviewDraftsError='暂无可用评审草稿。';}
+        else{reviewDrafts=null;reviewDraftsError=data.error?.message||'评审草稿读取失败。';}
+      } else if(!data.review_drafts || !Array.isArray(data.review_drafts.documents)){
+        reviewDrafts=null;reviewDraftsError='评审草稿格式不正确。';
+      } else if(data.review_drafts.project_id!==c.project.project_id){
+        reviewDrafts=null;reviewDraftsError='评审草稿项目不匹配。';
+      } else if(data.review_drafts.project_revision!==c.project.revision){
+        reviewDrafts=null;reviewDraftsError='项目版本已更新，评审草稿清单待重新登记。';
+      } else {
+        reviewDrafts=data.review_drafts.documents;reviewDraftsError='';
+      }
+    }     else if(d.status==='rejected'){
+      const err=d.reason;
+      if(err.status===401||err.status===403){reviewDrafts=null;reviewDraftsError='登录已失效或无权限。';}
+      else if(err.status===409){reviewDrafts=null;reviewDraftsError='项目版本已更新，评审草稿清单待重新登记。';}
+      else{reviewDrafts=null;reviewDraftsError=err.message||'评审草稿读取失败。';}
+    }
+    // 工程建议结果（own!==serial || key!==expected 已在上方统一隔离迟到响应）
+    if(adv.status==='fulfilled'){advisories=adv.value;advisoriesError='';}
+    else{advisories=[];advisoriesError=adv.reason?.message||'工程建议读取失败。';}
     draw();
   }
   async function mutate(op,body){
@@ -78,6 +107,15 @@
     return article;
   }
   function downloadText(content,filename,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=node('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  // 仅展示工程建议卡：无采用/确认/下载等任何按钮；与 awaiting_choice 选择流完全分离。
+  function advisoryCard(a){
+    const article=node('article',undefined,'work-card advisory-card');
+    article.append(node('p',a.stale?'工程建议 · 依据已变化 · 历史参考':'工程建议 · 条件性 · 待核','work-state'));
+    article.append(node('h3',a.summary));
+    article.append(node('pre',a.body_markdown,'work-report'));
+    article.append(node('p',`来源版本：revision ${a.source_revision}${a.stale?'；项目版本已前进，此建议仅作历史参考，不代替当前依据':'；与当前项目版本一致'}。本卡仅展示，不包含采用或确认操作，不改变已确认阶段。`,'muted'));
+    return article;
+  }
   async function download(id){
     if(busy || !context?.adapter.getDeliveryReview)return;
     const c=context,own=serial,opId=++operation;busy=true;message='正在核对三份文件版本…';draw();
@@ -100,6 +138,75 @@
     const labels={recorded_scope_only:'依据与范围已记录',unvalidated:'模型假设待验证',numerical_evidence_only:'数值复核证据',pending:'设备适配待核',draft_not_issued:'草稿，未签发'};
     article.append(node('p',labels[n.review_state]||'待工程复核','work-state'));
     if(Array.isArray(n.values)&&n.values.length){const wrap=node('div',undefined,'work-table-wrap'),table=node('table');const h=node('tr');for(const t of ['项目','结果 / 内容','单位'])h.append(node('th',t));table.append(h);for(const v of n.values){const tr=node('tr');const value=Array.isArray(v.value)?v.value.map(x=>Array.isArray(x)?x.join(' → '):String(x)).join('；'):typeof v.value==='object'? '详细内容见评审稿':String(v.value??'未提供');tr.append(node('td',v.label||'项目'),node('td',value),node('td',v.unit||'—'));table.append(tr);}wrap.append(table);article.append(wrap);}
+    return article;
+  }
+  // ECOP-WB-L1-CALCREVIEW-20260927: 04 阶段真实计算交付卡片（只读呈现阶段载荷）。
+  // 交付来自服务侧通道（calculation-delivery.cjs），核验为真实引擎结果后才会渲染；
+  // 卡片只读，确认放行仍由审核人在阶段动作行完成。
+  const RESULT_LABELS={configuration:'方案配置',feed:'进料',product:'浓缩产品',evaporation_total_kg_h:'总蒸发量',effect_split_kg_h:'分效蒸发量',effect_regime:'各效温位',mvr:'MVR 压缩机',heat_load_kw:'换热负荷',convergence:'收敛情况',streams_snapshot:'全流股数据'};
+  const RESULT_UNITS=[['_kg_h','kg/h'],['_wt','wt 分数'],['_kpa','kPa'],['_kw','kW'],['_pct','%'],['_bar','bar'],['_c','°C']];
+  const EVIDENCE_LABELS={flowsheet_model:'流程模型文件',results_record:'结果记录',flowsheet_screenshot:'流程截图'};
+  function unitOf(key){for(const [suffix,unit] of RESULT_UNITS)if(String(key).endsWith(suffix))return unit;return '';}
+  function resultRows(results){
+    const rows=[];
+    const walk=(value,label)=>{
+      if(value===null||value===undefined)return;
+      if(Array.isArray(value)){for(const item of value)walk(item,label);return;}
+      if(typeof value==='object'){for(const [k,v] of Object.entries(value))walk(v,`${label} · ${k}`);return;}
+      const key=String(label).split(' · ').pop();
+      rows.push({label,value:String(value),unit:typeof value==='number'?unitOf(key):''});
+    };
+    for(const [k,v] of Object.entries(results||{}))walk(v,RESULT_LABELS[k]||k);
+    return rows;
+  }
+  function tableOf(headers,rows){
+    const wrap=node('div',undefined,'work-table-wrap'),table=node('table'),head=node('tr');
+    for(const h of headers)head.append(node('th',h));
+    table.append(head);
+    for(const cells of rows){const tr=node('tr');for(const c of cells)tr.append(node('td',c));table.append(tr);}
+    wrap.append(table);return wrap;
+  }
+  // ECOP-WB-L1-DOCCARD-20260927: 06 阶段交付物目录只读卡片。
+  // 交付目录来自工程师提交的阶段载荷（documents.payload.deliverables），
+  // 卡片只读；逐项核对引用版本与哈希后，确认放行仍在阶段动作行完成。
+  function documentsDeliveryCard(payload){
+    const items=V.documentDeliverables(payload);
+    const article=node('article',undefined,'work-card documents-delivery-card');
+    article.append(node('p','已提交的阶段交付物 · 六步一致','work-eyebrow'),
+      node('h2',`交付物目录（${items.length}）`),
+      node('p',`引用来源版本 ${payload.source_revision||'未标注'} · 各交付物以所列阶段确认版本为准`,'muted'),
+      node('p','本卡片只读；逐项核对引用版本与内容哈希后，在阶段动作行确认放行。','muted'));
+    article.append(tableOf(['#','交付物','依据 / 引用版本'],
+      items.map((d,i)=>[String(i+1),d.name,d.note||'—'])));
+    if(typeof payload.notes==='string'&&payload.notes.trim())article.append(node('p',`交付说明与适用边界：${payload.notes}`,'work-state'));
+    return article;
+  }
+  function calculationDeliveryCard(payload,execution){
+    const article=node('article',undefined,'work-card calculation-delivery-card');
+    article.append(node('p','已归类的 Agent 交付 · 真实引擎','work-eyebrow'),
+      node('h2',`${payload.engine.name} ${payload.engine.version} 真实计算结果`),
+      node('p',`执行模式：真实引擎 · 模型 ${payload.model_version||'未标注'} · 物性方法 ${payload.property_method||'未标注'}${execution&&execution.delivered_action_id?` · 交付记账 ${execution.delivered_action_id}`:''}`,'muted'),
+      node('p','本卡片只读；核验结果、校核项与适用边界后，在阶段动作行确认放行。','muted'));
+    const rows=resultRows(payload.results);
+    if(rows.length)article.append(tableOf(['项目','结果 / 内容','单位'],rows.map(r=>[r.label,r.value,r.unit||'—'])));
+    const checks=payload.checks&&typeof payload.checks==='object'?Object.entries(payload.checks):[];
+    if(checks.length){
+      const details=node('details');details.append(node('summary',`校核项（${checks.length}）`),
+        tableOf(['校核项','结论'],checks.map(([k,v])=>[k,String(v)])));
+      article.append(details);
+    }
+    if(Array.isArray(payload.evidence)&&payload.evidence.length){
+      const details=node('details');details.open=true;
+      details.append(node('summary',`溯源证据（${payload.evidence.length}）`),
+        tableOf(['证据','文件','字节','SHA-256'],
+          payload.evidence.map(e=>[EVIDENCE_LABELS[e.kind]||e.kind,e.label||'—',String(e.bytes||'—'),String(e.sha256||'—').slice(0,16)+'…'])));
+      article.append(details);
+    }
+    if(Array.isArray(payload.assumptions)&&payload.assumptions.length){
+      const list=node('ul');for(const a of payload.assumptions)list.append(node('li',a));
+      const details=node('details');details.append(node('summary',`假设与口径（${payload.assumptions.length}）`),list);article.append(details);
+    }
+    if(typeof payload.boundary==='string'&&payload.boundary.trim())article.append(node('p',`适用边界：${payload.boundary}`,'work-state'));
     return article;
   }
   function draw(){
@@ -137,7 +244,16 @@
     const actionable=overview?model.needsChoice.filter(r=>V.reviewStage(r)):[];
     if(actionable.length){home.append(node('h2','待你处理'));for(const r of actionable)home.append(reviewCard(r));}
     if(records.length){area.append(node('h2',overview?'尚待归类的项目记录':'本步骤交互与成果'));for(const r of records)area.append(reviewCard(r,overview));}
-    else if(!overview&&activeView!=='requirements'&&activeView!=='documents')area.append(node('p','本步骤暂没有已归类的 Agent 交付。旧记录可在总览查看；需要工程依据时由柯大侠接续。','work-empty'));
+    // 工程建议（仅展示）：当前有效卡按绑定阶段/总览呈现；历史卡只在总览折叠保留。
+    if(advisoriesError)area.append(node('p',advisoriesError,'work-error'));
+    const currentAdvisories=advisories.filter(a=>!a.stale&&a.stage_id&&(overview||a.stage_id===activeView));
+    if(currentAdvisories.length){area.append(node('h2','工程建议（仅展示 · 待核/条件性）'));for(const a of currentAdvisories)area.append(advisoryCard(a));}
+    if(overview){const staleAdvisories=advisories.filter(a=>a.stale);
+      if(staleAdvisories.length){const advHistory=node('details',undefined,'work-card');advHistory.append(node('summary',`历史工程建议（${staleAdvisories.length}）`));for(const a of staleAdvisories)advHistory.append(advisoryCard(a));home.append(advHistory);}}
+    const calculationPayload=!overview&&activeView==='calculation'&&V.isRealEngineCalculation(context.project.stages.calculation?.payload)?context.project.stages.calculation.payload:null;
+    const stageRecordPresent=!overview&&activeView!=='requirements'&&activeView!=='documents'&&V.stageRecordPresent(context.project.stages[activeView]?.payload);
+    if(!records.length&&!calculationPayload&&!overview&&activeView!=='requirements'&&activeView!=='documents')area.append(node('p',stageRecordPresent?'本步骤以工程师提交的结构化阶段记录为准，内容见下方「阶段版本与高级编辑」；此处无 Agent 交付卡。':'本步骤暂没有已归类的 Agent 交付。旧记录可在总览查看；需要工程依据时由柯大侠接续。','work-empty'));
+    if(calculationPayload)main.append(calculationDeliveryCard(calculationPayload,context.project.execution_context));
     if(!overview){for(const n of model.stages.find(s=>s.id===activeView)?.evidence||[])main.append(evidenceCard(n));}
     if(overview){
       const history=model.unclassified.filter(r=>!unclassifiedActive.includes(r));
@@ -145,16 +261,69 @@
       const summaries=model.stages.filter(s=>s.evidence.length).map(s=>`${s.title}：${s.evidence.length} 项依据`);
       home.append(node('h2','当前计算与设备依据'),node('p',summaries.join('；')||'暂无已关联的当前版本评审依据。','work-empty'));
     }
+    const documentsPayload=activeView==='documents'&&!overview&&V.documentDeliverables(context.project.stages.documents?.payload).length?context.project.stages.documents.payload:null;
     if(activeView==='documents'){
+      if(documentsPayload)main.append(documentsDeliveryCard(documentsPayload));
       main.append(node('h2','同版评审文件'),node('p',model.deliveryMessage,'work-message'));
       for(const [id,title] of [['technical-proposal','技术方案评审稿'],['calculation-book','计算依据与结果'],['equipment-parameters','设备参数核对稿']])main.append(button(`下载${title}`,()=>download(id),!model.currentDelivery||busy,true));
       main.append(node('p','每次下载重新核对项目版本、证据快照与三份内容哈希；评审草稿不等于正式工程签发。','muted'));
+
+      // 评审草稿（受控）下载区
+      const draftSection=node('section',undefined,'work-card review-drafts-section');
+      draftSection.append(node('h3','评审草稿（受控）'));
+      draftSection.append(node('p','评审草稿 · 非正式签发 · engineering_release=false','draft-banner'));
+      if(reviewDraftsError){
+        const errorRow=node('div',undefined,'draft-error-row');
+        errorRow.append(node('p',reviewDraftsError,'draft-error'));
+        errorRow.append(button('重试',()=>load(true),busy,true));
+        draftSection.append(errorRow);
+      } else if(reviewDrafts && reviewDrafts.length){
+        for(const draft of reviewDrafts){
+          const draftCard=node('div',undefined,'draft-card');
+          draftCard.append(node('h4',draft.label));
+          draftCard.append(node('p',`SHA256: ${draft.sha256.substring(0,16)}...`,'draft-meta'));
+          draftCard.append(node('p',`字节数: ${draft.bytes.toLocaleString()}`,'draft-meta'));
+          const downloadBtn=button('下载',async()=>{
+            const ownSerial=serial;
+            const originalContext=context;
+            const originalProjectId=originalContext?.project?.project_id;
+            const originalRevision=originalContext?.project?.revision;
+            try{
+              downloadBtn.disabled=true;
+              downloadBtn.textContent='下载中...';
+              const response=await fetch(endpoint(originalContext,'review-drafts/'+draft.id),{credentials:'same-origin'});
+              if(ownSerial!==serial)return;
+              if(!response.ok){
+                const msg=response.status===409?'项目版本已更新，评审草稿清单待重新登记。':response.status===401?'登录已失效。':response.status===403?'无权限。':'下载失败，请重试。';
+                throw Error(msg);
+              }
+              const headerSha=response.headers.get('X-Review-Draft-Sha256');
+              const blob=await response.blob();
+              if(ownSerial!==serial)return;
+              const actualSha=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()).then(buf=>Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''));
+              if(ownSerial!==serial)return;
+              if(context!==originalContext||context?.project?.project_id!==originalProjectId||context?.project?.revision!==originalRevision){return;}
+              if(actualSha!==draft.sha256){throw Error('下载内容哈希与清单不符，已拒绝。');}
+              if(!headerSha||!/^[a-f0-9]{64}$/.test(headerSha)||headerSha!==draft.sha256){throw Error('响应头哈希缺失、格式错误或与清单不符，已拒绝。');}
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement('a');a.href=url;a.download=draft.name;a.click();
+              URL.revokeObjectURL(url);
+            }catch(e){if(ownSerial===serial&&context===originalContext){alert(e.message);}}
+            finally{if(ownSerial===serial){downloadBtn.disabled=false;downloadBtn.textContent='下载';}}
+          },busy);
+          draftCard.append(downloadBtn);
+          draftSection.append(draftCard);
+        }
+      } else {
+        draftSection.append(node('p','暂无可用评审草稿。','muted'));
+      }
+      main.append(draftSection);
     }
-    byId('execution-pill').textContent=model.currentDelivery?'已关联实际计算证据':'执行状态见本步骤记录';
+    byId('execution-pill').textContent=model.realCalculationDelivered?'已交付真实计算结果':model.currentDelivery?'已关联实际计算证据':'执行状态见本步骤记录';
     if(model.currentDelivery)byId('case-execution-label').textContent='已关联真实计算证据 · 本次未重跑';
   }
   let draftNote='';
-  function reset(){context=null;key='';serial++;operation++;abort?.abort();reviews=[];delivery=null;busy=false;errors={};message='';states={reviews:'idle',delivery:'idle'};activeView='overview';draftNote='';}
+  function reset(){context=null;key='';serial++;operation++;abort?.abort();reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';advisories=[];advisoriesError='';busy=false;errors={};message='';states={reviews:'idle',delivery:'idle'};activeView='overview';draftNote='';}
   function render(c){
     byId('project-overview-button').hidden=!c.business;
     if(!c.business){reset();byId('workspace-overview').hidden=true;byId('workspace-business-content').hidden=true;byId('workspace-stage-heading').hidden=false;byId('workspace-advanced').hidden=false;byId('workspace-comments').hidden=false;return;}

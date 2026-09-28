@@ -14,10 +14,32 @@
  function validTaskbook(r){return r&&typeof r.id==='string'&&typeof r.filename==='string'&&r.report&&Array.isArray(r.report.fields)&&Array.isArray(r.report.issues)&&Number.isInteger(r.report.blocking_count);}
  function feedback(text){messageText=text;const p=document.getElementById('taskbook-message');if(p)p.textContent=text;}
  function downloadReport(){const rows=[['级别','位置','字段','问题','影响步骤'],...selected.report.issues.map(i=>[i.severity==='error'?'需修订':'待补充',`${i.sheet}!${i.cell}`,i.field,i.message,i.impact])];const csv='\uFEFF'+rows.map(row=>row.map(x=>'"'+String(x).replace(/^[=+@-]/,"'").replaceAll('"','""')+'"').join(',')).join('\r\n');const a=el('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='任务书校对问题.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+ function buildSummary(report){
+  const by=new Map(report.fields.map(f=>[f.target_field,f]));
+  const textOf=id=>{const f=by.get(id);if(!f||f.value===null||f.value===undefined||f.value==='')return null;return {value:f.value,unit:f.unit||'',label:f.label};};
+  const lines=[];const parts=[];
+  const name=textOf('project_name');const material=textOf('requirements.fluid_identity');
+  if(name){lines.push(`项目：${name.value}`);parts.push(`项目「${name.value}」`);}
+  if(material){lines.push(`物料：${material.value}`);parts.push(`物料「${material.value}」`);}
+  const feed=textOf('requirements.feed_rate');
+  if(feed){lines.push(`处理量：${feed.value} ${feed.unit}`);parts.push(`处理量 ${feed.value} ${feed.unit}`);}
+  const fc=textOf('requirements.feed_concentration');const pc=textOf('requirements.product_concentration');
+  if(fc&&pc){lines.push(`浓度：进料 ${fc.value} ${fc.unit} → 目标 ${pc.value} ${pc.unit}（口径按原读数保留，未换算）`);parts.push(`进料 ${fc.value} ${fc.unit}，目标 ${pc.value} ${pc.unit}`);}
+  else if(fc||pc){const f=fc||pc;lines.push(`浓度：仅提供 ${f.label} ${f.value} ${f.unit}`);parts.push(`${f.label} ${f.value} ${f.unit}`);}
+  const ft=textOf('requirements.feed_temperature');
+  if(ft){lines.push(`进料温度：${ft.value} ${ft.unit}`);parts.push(`进料温度 ${ft.value} ${ft.unit}`);}
+  const basis=textOf('requirements.design_concentration_basis')||textOf('requirements.concentration_component');
+  if(basis)lines.push(`浓度口径：${basis.value}`);
+  const objective=textOf('requirements.customer_objective');
+  if(objective)lines.push(`特殊要求：${objective.value}`);
+  const text=`请基于以下已确认条件发起工艺推荐（其余参数按所选路线补充）：${parts.join('；')}。`;
+  return {lines,text};
+ }
  function draw(){
  if(!context?.active)return;const p=panel();p.replaceChildren();
  p.append(el('h2','提交蒸发系统设计任务书'),el('p','下载 Excel 模板填写并上传。系统保留原件、提取内容与每次修订记录；请修改 Excel 后重新提交。'));
- const toolbar=el('div',undefined,'taskbook-toolbar');const a=el('a','下载空白任务书','button button-secondary');a.href=`${context.config.basePath||''}/taskbook-template.xlsx`;a.download='ECOP蒸发系统任务书模板.xlsx';toolbar.append(a);
+ const toolbar=el('div',undefined,'taskbook-toolbar');const a=el('a','下载任务书模板','button button-secondary');a.href=`${context.config.basePath||''}/taskbook-template.xlsx`;a.download='ECOP蒸发系统任务书模板.xlsx';toolbar.append(a);
+ const aV1=el('a','旧版四表模板（仍可上传）','taskbook-compat-link');aV1.href=`${context.config.basePath||''}/taskbook-template-v1.xlsx`;aV1.download='ECOP蒸发系统任务书模板-旧版四表.xlsx';toolbar.append(aV1);
  const file=el('input');file.type='file';file.accept='.xlsx';file.id='taskbook-file';file.setAttribute('aria-label','选择 Excel 任务书');file.disabled=!context.editable||busy;toolbar.append(file);
  toolbar.append(button(busy?'正在提取…':'上传并校对',async()=>{
   const f=file.files[0];if(!f)return feedback('请选择 .xlsx 文件。');if(f.size>300*1024)return feedback('文件上限 300 KiB，请去除图片与嵌入附件。');
@@ -32,6 +54,22 @@
 
  if(!selected)return;
  const r=selected.report;p.append(el('h3',`校对结果：${r.blocking_count} 项需修订，${r.issues.length-r.blocking_count} 项待补充/专项复核`));
+ const summary=buildSummary(r);
+ if(summary.lines.length){
+  const card=el('section',undefined,'taskbook-summary');
+  card.append(el('h4','关键条件摘要（客户可读）'));
+  const ul=el('ul');for(const line of summary.lines)ul.append(el('li',line));card.append(ul);
+  card.append(el('p','以上条件已可发起工艺推荐；密度、黏度、蒸汽、冷却水、材质等按所选工艺路线再逐项补充，不必先填齐。','taskbook-hint'));
+  const recommend=button('发起工艺推荐（带入以上摘要）',()=>{
+   const note=document.getElementById('work-request-note');
+   if(!note){feedback('未找到工艺推荐入口，请确认当前处于需求与任务书步骤。');return;}
+   note.value=summary.text;note.dispatchEvent(new Event('input',{bubbles:true}));
+   note.scrollIntoView({behavior:'smooth',block:'center'});note.focus({preventScroll:true});
+   feedback('已将关键条件摘要带入下方工艺推荐的补充说明，可直接提交。');
+  },!context.editable||r.blocking_count>0||busy);
+  card.append(recommend);
+  p.append(card);
+ }
  const actions=el('div',undefined,'taskbook-toolbar');actions.append(button('下载问题清单',downloadReport));const original=el('a','下载本次原件','button button-secondary');original.href=url('taskbooks/file/'+selected.id);actions.append(original);
  actions.append(button('确认采用此任务书',async()=>{if(busy)return;busy=true;const id=selected.id,c=context,serial=requestSerial;draw();try{await request('taskbooks-apply',{id,expected_revision:c.project.revision},c);if(serial!==requestSerial)return;key='';await c.controller.load();c.onChanged?.();}catch(e){if(serial===requestSerial)feedback(e.message);}finally{if(serial===requestSerial){busy=false;draw();}}},!context.editable||r.blocking_count>0||busy||selected.base_revision!==context.project.revision));p.append(actions);
  if(selected.base_revision!==context.project.revision && current?.id!==selected.id)p.append(el('p','此上传记录基于较早项目版本；如需修订，请以当前版本重新上传。'));

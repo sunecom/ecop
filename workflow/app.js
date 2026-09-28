@@ -10,7 +10,8 @@
     { id: "documents", title: "方案与文件", subtitle: "版本化输出", audience: "PROJECT RECORD", description: "整理交付物目录和引用版本；冻结导出会包含六步一致快照。" },
   ];
   const roleNames = { customer: "客户", engineer: "工程师", reviewer: "审核人", lead: "负责人" };
-  const userNames = { "demo-customer": "客户演示账号", "demo-engineer": "工程师演示账号", "demo-reviewer": "审核人演示账号", "demo-lead": "负责人演示账号" };
+  const userNames = { "demo-customer": "客户演示账号", "demo-engineer": "工程师演示账号", "demo-reviewer": "审核人演示账号", "demo-lead": "负责人演示账号",
+    "basic:ecop": "ecop · 客户（业主）", "basic:kdx": "柯大侠 · 工程师", "basic:jianguo": "建国 · 审核人" };
   const statusNames = { draft: "草稿", submitted: "待审核", returned: "已退回", confirmed: "已确认", stale: "需更新" };
   const statusSubtitles = { draft: "准备中", submitted: "等待审核", returned: "修改后重新提交", confirmed: "版本已确认", stale: "上游已变化" };
   const defaultPayloads = {
@@ -66,6 +67,7 @@
     workflowContext: byId("workflow-context"),
     projectSelect: byId("project-select"), projectTitle: byId("project-title"),
     roleModeLabel: byId("role-mode-label"), roleModeNote: byId("role-mode-note"),
+    userPill: byId("user-pill"),
   };
 
   const workflowConfig = window.ECOPWorkflowConfig || { mode: "auth_required", basePath: "" };
@@ -73,6 +75,17 @@
     ? ECOPWorkflowSyntheticAdapter.createSyntheticAdapter()
     : ECOPWorkflowHttpAdapter.createHttpAdapter({ mode: workflowConfig.mode, basePath: workflowConfig.basePath, csrfToken: workflowConfig.csrfToken });
   const controller = ECOPWorkflowController.createController({ adapter, projectId: workflowConfig.projectId, actorId: workflowConfig.actorId, render });
+  if (refs.userPill) {
+    const userLabel = workflowConfig.userLabel || userNames[workflowConfig.actorId] || workflowConfig.actorId;
+    if (userLabel) {
+      refs.userPill.textContent = `当前登录：${userLabel}`;
+      if (workflowConfig.loginUrl) {
+        refs.userPill.href = workflowConfig.loginUrl;
+        refs.userPill.title = "切换登录身份";
+      }
+      refs.userPill.hidden = false;
+    }
+  }
   let availableProjects = [];
   let sourceTemplates = [];
   let businessTeam = null;
@@ -618,7 +631,8 @@
     refs.projectRevision.textContent = `v${project.revision}`;
     refs.projectTitle.textContent = project.title;
     refs.projectHomeButton.hidden = !businessMode;
-    refs.projectSelect.hidden = availableProjects.length < 2;
+    // 版面整理（2026-09-26）：选项未填充时不要显示空的选择框（工作区路径下选项为空）
+    refs.projectSelect.hidden = availableProjects.length < 2 || refs.projectSelect.options.length < 2;
     if (availableProjects.some(item => item.project_id === project.project_id)) refs.projectSelect.value = project.project_id;
     refs.status.textContent = statusNames[stage.status] || stage.status;
     refs.status.className = `status-badge status-${stage.status}`;
@@ -627,6 +641,11 @@
     refs.stageRevision.textContent = `阶段 r${stage.revision}`;
     refs.payload.value = safeJson(displayedPayload);
     const businessRequirementsActive = businessProject && meta.id === "requirements";
+    // ECOP-WB-L1-CALCREVIEW-20260927: 业务项目 04 阶段仍不开放手工编辑/提交（真实结果只由
+    // 服务侧交付通道写入）；但当阶段载荷已含真实引擎交付（含溯源证据）时，解除审核人的
+    // 确认锁——否则审核入口永久不可用，04 无法放行。
+    const calculationDelivered = businessProject && meta.id === "calculation"
+      && window.ECOPWorkflowView.isRealEngineCalculation(stage.payload);
     const customerCalculationLocked = businessProject && meta.id === "calculation";
     refs.businessRequirementsForm.hidden = true;
     window.ECOPTaskbookUI.render({active:businessRequirementsActive,project,editable,controller,config:workflowConfig,onChanged:()=>window.ECOPWorkspaceUI.refresh()});
@@ -647,12 +666,13 @@
     if (businessRequirementsActive) {
       refs.submit.disabled = refs.submit.disabled || ECOPRequirementsSchema.missingForReview(project.stages.requirements.payload?.fields || []).length > 0;
     }
-    refs.confirm.disabled = !confirmer || customerCalculationLocked;
+    refs.confirm.disabled = !confirmer || (customerCalculationLocked && !calculationDelivered);
     refs.return.disabled = !returner;
     refs.returnReasonWrap.hidden = !businessMode || !returner;
     refs.returnReason.required = businessMode && returner;
     refs.calcTools.hidden = meta.id !== "calculation" || !syntheticProject;
-    refs.customerCalculationGuard.hidden = !customerCalculationLocked;
+    refs.customerCalculationGuard.hidden = !customerCalculationLocked || calculationDelivered;
+    if (calculationDelivered) refs.customerCalculationGuard.textContent = "本阶段已由服务侧交付真实工程计算结果（含引擎版本与证据哈希）；请核对结果、校核项与适用边界后确认。手工或合成载荷仍不会写入客户项目。";
     refs.calcFail.disabled = !editable || role !== "engineer";
     refs.calcFail.hidden = !syntheticProject;
     refs.calcRun.hidden = !syntheticProject;

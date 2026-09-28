@@ -68,6 +68,21 @@
       getExportVersion(projectId) { return request(`/api/workflow/projects/${encodeURIComponent(projectId)}/export`); },
       getReportBundle(projectId) { return request(`/api/workflow/projects/${encodeURIComponent(projectId)}/reports`); },
       getDeliveryReview(projectId) { return request(`/api/workflow/projects/${encodeURIComponent(projectId)}/delivery-review`); },
+      listReviewDrafts(projectId) { return request(`/api/workflow/projects/${encodeURIComponent(projectId)}/review-drafts`); },
+      async fetchReviewDraft(projectId, docId) {
+        const headers = { Accept: "application/octet-stream" };
+        if (mode === "test_only" || mode === "demo_proxy") headers["X-Workflow-Test-Actor"] = actorId;
+        let response;
+        try { response = await fetch(`${baseUrl}${basePath}/api/workflow/projects/${encodeURIComponent(projectId)}/review-drafts/${encodeURIComponent(docId)}`, { method: "GET", headers, credentials: "same-origin" }); }
+        catch { return {ok:false,error:{code:'NETWORK_ERROR',message:'网络请求未完成。请刷新核对服务端状态后再操作。'}}; }
+        if (response.status === 401 || response.status === 403) return {ok:false,error:{code:'FORBIDDEN',message:response.status===401?'登录已失效，请重新登录。':'当前账号没有权限。'}};
+        if (!response.ok) {
+          let value = null; try { value = await response.json(); } catch {}
+          return {ok:false,error:{code:(value&&value.error&&value.error.code)||'HTTP_ERROR',message:(value&&value.error&&value.error.message)||`请求失败（${response.status}）。`}};
+        }
+        const blob = await response.blob();
+        return { ok: true, blob, sha256: response.headers.get("X-Review-Draft-Sha256") };
+      },
     });
   }
 
