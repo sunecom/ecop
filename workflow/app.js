@@ -524,63 +524,145 @@
     });
   }
 
-  function renderPrivatePfd(payload) {
-    const svg = refs.casePfdSvg;
-    svg.replaceChildren();
-    const nodes = Array.isArray(payload && payload.nodes) ? payload.nodes.slice(0, 48) : [];
-    const connections = Array.isArray(payload && payload.connections) ? payload.connections.slice(0, 96) : [];
-    const columns = window.matchMedia("(max-width: 600px)").matches ? 1 : Math.min(3, Math.max(1, nodes.length));
-    const rows = Math.max(1, Math.ceil(nodes.length / columns));
-    const cellWidth = 260;
-    const cellHeight = 116;
-    const width = columns * cellWidth + 40;
-    const height = rows * cellHeight + 28;
-    const positions = new Map();
-    const namespace = "http://www.w3.org/2000/svg";
-    const element = (tag, attributes, label) => {
-      const item = document.createElementNS(namespace, tag);
-      for (const [name, value] of Object.entries(attributes || {})) item.setAttribute(name, String(value));
-      if (label !== undefined) item.textContent = String(label);
-      return item;
-    };
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
-    svg.setAttribute("aria-label", `只读 PFD 草稿，${nodes.length} 个节点、${connections.length} 条连接`);
-    const defs = element("defs");
-    const marker = element("marker", { id: "case-pfd-arrow", viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" });
-    marker.append(element("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#527a68" }));
-    defs.append(marker);
-    svg.append(defs);
-    nodes.forEach((node, index) => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-      positions.set(String(node.id), { x: 20 + column * cellWidth, y: 14 + row * cellHeight });
-    });
-    connections.forEach(connection => {
-      const from = positions.get(String(connection.from));
-      const to = positions.get(String(connection.to));
-      if (!from || !to) return;
-      const vertical = to.y >= from.y + cellHeight;
-      const startX = vertical ? from.x + 98 : from.x + 196;
-      const startY = vertical ? from.y + 78 : from.y + 39;
-      const endX = vertical ? to.x + 98 : to.x;
-      const endY = vertical ? to.y : to.y + 39;
-      const middle = vertical ? (startY + endY) / 2 : (startX + endX) / 2;
-      const path = vertical
-        ? `M ${startX} ${startY} C ${startX} ${middle}, ${endX} ${middle}, ${endX} ${endY}`
-        : `M ${startX} ${startY} C ${middle} ${startY}, ${middle} ${endY}, ${endX} ${endY}`;
-      svg.append(element("path", { d: path, fill: "none", stroke: "#789989", "stroke-width": 2, "marker-end": "url(#case-pfd-arrow)" }));
-    });
-    nodes.forEach((node, index) => {
-      const position = positions.get(String(node.id));
-      const group = element("g", { transform: `translate(${position.x} ${position.y})` });
-      group.append(element("rect", { width: 196, height: 78, rx: 12, fill: "#fffefa", stroke: "#9fb8aa", "stroke-width": 1.5 }));
-      group.append(element("text", { x: 14, y: 25, fill: "#718178", "font-size": 11 }, String(node.kind || "PFD 节点").slice(0, 28)));
-      group.append(element("text", { x: 14, y: 51, fill: "#253d32", "font-size": 14, "font-weight": 600 }, String(node.label || node.id || `节点 ${index + 1}`).slice(0, 30)));
-      svg.append(group);
-    });
-    refs.casePfdNote.textContent = `${nodes.length} 个节点 · ${connections.length} 条连接 · 来源 PFD 草案；未校核、未计算，图中连线仅按已导入连接字段呈现。`;
-  }
+  function renderPrivatePfd(payload, project) {
+      const svg = refs.casePfdSvg;
+      svg.replaceChildren();
+      const existingPanel = document.querySelector('#case-pfd-connection-list');
+      if (existingPanel) existingPanel.remove();
+      const nodes = Array.isArray(payload && payload.nodes) ? payload.nodes.slice(0, 48) : [];
+      const connections = Array.isArray(payload && payload.connections) ? payload.connections.slice(0, 96) : [];
+      const columns = window.matchMedia("(max-width: 600px)").matches ? 1 : Math.min(3, Math.max(1, nodes.length));
+      const rows = Math.max(1, Math.ceil(nodes.length / columns));
+      const cellWidth = 260;
+      const cellHeight = 116;
+      const width = columns * cellWidth + 40;
+      const height = rows * cellHeight + 28;
+      const positions = new Map();
+      const namespace = "http://www.w3.org/2000/svg";
+      const element = (tag, attributes, label) => {
+        const item = document.createElementNS(namespace, tag);
+        for (const [name, value] of Object.entries(attributes || {})) item.setAttribute(name, String(value));
+        if (label !== undefined) item.textContent = String(label);
+        return item;
+      };
+      const pfdStage = project && project.stages && project.stages.pfd;
+      const pfdStatus = pfdStage ? pfdStage.status : "unknown";
+      const statusDescMap = {
+        "draft": "PFD 草案",
+        "submitted": "PFD 已提交待审",
+        "confirmed": "PFD 结构已确认",
+        "stale": "PFD 依据已变化",
+        "unknown": "PFD 状态未知"
+      };
+      const statusDesc = statusDescMap[pfdStatus] || statusDescMap.unknown;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+      svg.setAttribute("aria-label", `只读 ${statusDesc}，${nodes.length} 个节点、${connections.length} 条连接`);
+      const defs = element("defs");
+      const marker = element("marker", { id: "case-pfd-arrow", viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" });
+      marker.append(element("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#527a68" }));
+      defs.append(marker);
+      svg.append(defs);
+      nodes.forEach((node, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        positions.set(String(node.id), { x: 20 + column * cellWidth, y: 14 + row * cellHeight });
+      });
+      connections.forEach(connection => {
+        const from = positions.get(String(connection.from));
+        const to = positions.get(String(connection.to));
+        if (!from || !to) return;
+        const vertical = to.y >= from.y + cellHeight;
+        const startX = vertical ? from.x + 98 : from.x + 196;
+        const startY = vertical ? from.y + 78 : from.y + 39;
+        const endX = vertical ? to.x + 98 : to.x;
+        const endY = vertical ? to.y : to.y + 39;
+        const middle = vertical ? (startY + endY) / 2 : (startX + endX) / 2;
+        const path = vertical
+          ? `M ${startX} ${startY} C ${startX} ${middle}, ${endX} ${middle}, ${endX} ${endY}`
+          : `M ${startX} ${startY} C ${middle} ${startY}, ${middle} ${endY}, ${endX} ${endY}`;
+        const pathElement = element("path", { d: path, fill: "none", stroke: "#789989", "stroke-width": 2, "marker-end": "url(#case-pfd-arrow)" });
+        if (connection.label) {
+          const title = element("title", {}, connection.label);
+          pathElement.append(title);
+        }
+        svg.append(pathElement);
+      });
+      nodes.forEach((node, index) => {
+        const position = positions.get(String(node.id));
+        const group = element("g", { transform: `translate(${position.x} ${position.y})` });
+        group.append(element("rect", { width: 196, height: 78, rx: 12, fill: "#fffefa", stroke: "#9fb8aa", "stroke-width": 1.5 }));
+        const kindText = String(node.kind || "PFD 节点");
+        const labelText = String(node.label || node.id || `节点 ${index + 1}`);
+        const kindElement = element("text", { x: 14, y: 25, fill: "#718178", "font-size": 11 }, kindText.slice(0, 28));
+        if (kindText.length > 28) {
+          kindElement.append(element("title", {}, kindText));
+        }
+        group.append(kindElement);
+        const labelElement = element("text", { x: 14, y: 51, fill: "#253d32", "font-size": 14, "font-weight": 600 }, labelText.slice(0, 30));
+        if (labelText.length > 30) {
+          labelElement.append(element("title", {}, labelText));
+        }
+        group.append(labelElement);
+        svg.append(group);
+      });
+      const statusNoteMap = {
+        "draft": "草案阶段，结构待审核",
+        "submitted": "已提交，待审核人确认结构",
+        "confirmed": "结构已确认，与后续计算审核独立",
+        "stale": "依据已变化，历史参考",
+        "unknown": "状态未知"
+      };
+      const statusNote = statusNoteMap[pfdStatus] || statusNoteMap.unknown;
+      refs.casePfdNote.textContent = `${nodes.length} 个节点 · ${connections.length} 条连接 · ${statusNote}；图中连线仅按已导入连接字段呈现，悬停查看完整标签。`;
+      const previewContainer = refs.casePfdPreview;
+      const listPanel = document.createElement('div');
+      listPanel.id = 'case-pfd-connection-list';
+      listPanel.style.cssText = 'margin-top:12px;padding:12px;background:#f8faf9;border:1px solid #d4e0da;border-radius:8px;max-height:300px;overflow-y:auto;font-size:14px;line-height:1.6;';
+      const listTitle = document.createElement('div');
+      listTitle.style.cssText = 'font-weight:600;margin-bottom:8px;color:#253d32;font-size:15px;';
+      listTitle.textContent = `流股/连接清单（${connections.length} 条）`;
+      listPanel.append(listTitle);
+      if (connections.length === 0) {
+        const emptyNote = document.createElement('div');
+        emptyNote.style.cssText = 'color:#718178;';
+        emptyNote.textContent = '无连接数据';
+        listPanel.append(emptyNote);
+      } else {
+        const table = document.createElement('table');
+        table.style.cssText = 'width:100%;border-collapse:collapse;word-break:break-all;';
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.background = '#e8f0ec';
+        ['起点', '终点', '标签'].forEach(text => {
+          const th = document.createElement('th');
+          th.style.cssText = 'padding:8px;text-align:left;border-bottom:2px solid #d4e0da;font-size:13px;';
+          th.textContent = text;
+          headerRow.append(th);
+        });
+        thead.append(headerRow);
+        table.append(thead);
+        const tbody = document.createElement('tbody');
+        connections.forEach(c => {
+          const fromNode = nodes.find(n => String(n.id) === String(c.from));
+          const toNode = nodes.find(n => String(n.id) === String(c.to));
+          const fromLabel = fromNode ? (fromNode.label || fromNode.id) : String(c.from);
+          const toLabel = toNode ? (toNode.label || toNode.id) : String(c.to);
+          const connLabel = c.label || '(无标签)';
+          const row = document.createElement('tr');
+          [fromLabel, toLabel, connLabel].forEach((text, i) => {
+            const td = document.createElement('td');
+            td.style.cssText = 'padding:8px;border-bottom:1px solid #e8f0ec;' + (i === 2 ? 'color:#527a68;' : '');
+            td.textContent = text;
+            row.append(td);
+          });
+          tbody.append(row);
+        });
+        table.append(tbody);
+        listPanel.append(table);
+      }
+      previewContainer.append(listPanel);
+    }
 
   function render(state) {
     if(!state.project)document.getElementById("delivery-review-tools").hidden=true;
@@ -722,7 +804,7 @@
       refs.footerContext.textContent = businessProject ? "真实业务草稿 · 已版本化保存 · 尚无计算结果" : "隔离合成测试 · 不写入客户项目";
     }
     refs.casePfdPreview.hidden = !(privateReadOnly || businessProject) || meta.id !== "pfd" || !project.stages.pfd.payload;
-    if (!refs.casePfdPreview.hidden) renderPrivatePfd(project.stages.pfd.payload);
+    if (!refs.casePfdPreview.hidden) renderPrivatePfd(project.stages.pfd.payload, project);
     refs.roleInitial.textContent = roleInitial;
     refs.roleInitial.className = `avatar avatar-${role || "customer"}`;
     refs.exportButton.disabled = role !== "lead" || !allConfirmed || project.frozen || businessProject;
