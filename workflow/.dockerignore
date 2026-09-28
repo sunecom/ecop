@@ -19,10 +19,15 @@
 !taskbook-fields.json
 !taskbook-ui.js
 !taskbook-template.xlsx
+!taskbook-template-v1.xlsx
 !agent-context.cjs
 !manual-review.cjs
 !delivery-review.cjs
 !evidence-snapshot.cjs
+!advisories.cjs
+!business-status.cjs
+!calculation-delivery.cjs
+!review-drafts.cjs
 
 !workspace-ui.js
 !workflow-view.js

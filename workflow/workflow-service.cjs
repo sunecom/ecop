@@ -6,8 +6,12 @@ const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { randomUUID, timingSafeEqual } = require("node:crypto");
 const engine = require("./workflow-engine.js");
+// ECOP-WB-L1-CALCDELIVERY-20260927: operator-only 服务侧真实计算交付通道（不挂 HTTP 路由）。
+const calculationDelivery = require("./calculation-delivery.cjs");
 const { generateReportBundle } = require("./report-generator.cjs");
 const requirementsSchema = require("./requirements-schema.js");
+// ECOP-WB-L1-WEB-EXECUTE-20260926: read-only backend business status projection.
+const { projectBusinessStatus } = require("./business-status.cjs");
 
 const TEST_ACTORS = Object.freeze({
   "demo-customer": Object.freeze({ user_id: "demo-customer", role: "customer" }),
@@ -435,7 +439,11 @@ class WorkflowStore {
     if (this.isReadOnlyPrivateProject(action.project_id)) return privateProjectReadOnly();
     return this.transaction(database => {
       const { project } = this.readProject(action.project_id, actorId);
-      if (isBusinessProject(project) && action.stage_id === "calculation" && ["edit", "submit", "confirm"].includes(action.type)) return customerCalculationBlocked();
+      if (isBusinessProject(project) && action.stage_id === "calculation" && ["edit", "submit", "confirm"].includes(action.type)) {
+        // ECOP-WB-L1-CALCDELIVERY-20260927: 真实引擎交付（服务侧 deliverCalculation 通道）的结果
+        // 允许 reviewer 经 HTTP confirm；编辑/提交仍拦截，mock/伪造载荷 confirm 仍拦截。
+        if (action.type !== "confirm" || !calculationDelivery.isRealEngineCalculation(project.stages.calculation.payload)) return customerCalculationBlocked();
+      }
       if (isBusinessProject(project) && action.stage_id === "requirements" && action.type === "submit") {
         const reviewCheck = requirementsSchema.validateForReview(project.stages.requirements.payload);
         if (!reviewCheck.ok) return { ok: false, error: {
@@ -794,6 +802,7 @@ function createHttpServer(options) {
     ["/requirements-schema.js", ["requirements-schema.js", "text/javascript; charset=utf-8"]],
     ["/taskbook-ui.js", ["taskbook-ui.js", "text/javascript; charset=utf-8"]],
     ["/taskbook-template.xlsx", ["taskbook-template.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]],
+    ["/taskbook-template-v1.xlsx", ["taskbook-template-v1.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]],
     ["/business-ui-copy.js", ["business-ui-copy.js", "text/javascript; charset=utf-8"]],
   ]);
 
@@ -868,6 +877,39 @@ function createHttpServer(options) {
       try{return sendJson(response,200,config.deliveryReviews.load(project));}
       catch(e){if(e.deliveryStatus)return sendJson(response,e.deliveryStatus,{ok:false,error:{code:e.code,message:e.message}});throw e;}
     }
+    const reviewDraftsRoute=requestUrl.pathname.match(/^\/api\/workflow\/projects\/([^/]+)\/review-drafts(?:\/([A-Za-z0-9][A-Za-z0-9._-]{0,63}))?$/);
+    if(reviewDraftsRoute){
+      if(request.method!=="GET")return sendJson(response,405,{ok:false,error:{code:"METHOD_NOT_ALLOWED",message:"评审草稿接口只读。"}});
+      const projectId=decodeURIComponent(reviewDraftsRoute[1]);
+      // Existing project ACL is checked BEFORE opening any review-draft evidence (member-only).
+      const project=config.store.loadProject(projectId,authContext.actorId).project;
+      if(requestUrl.search)return sendJson(response,400,{ok:false,error:{code:"INVALID_INPUT",message:"评审草稿接口不接受路径或身份参数。"}});
+      if(!config.reviewDrafts||!config.reviewDrafts.has(projectId))return sendJson(response,404,{ok:false,error:{code:"REVIEW_DRAFTS_NOT_FOUND",message:"当前项目尚无登记的评审草稿。"}});
+      try{
+        if(!reviewDraftsRoute[2])return sendJson(response,200,config.reviewDrafts.list(project));
+        const served=config.reviewDrafts.open(project,reviewDraftsRoute[2]);
+        const downloadName=encodeURIComponent(served.document.name);
+        response.writeHead(200,{
+          "Content-Type":served.document.content_type,
+          "Content-Length":served.buffer.length,
+          "Content-Disposition":`attachment; filename*=UTF-8''${downloadName}`,
+          "Cache-Control":"no-store",
+          "X-Content-Type-Options":"nosniff",
+          "X-Review-Draft-Sha256":served.document.sha256,
+          "X-Review-Draft-Engineering-Release":"false",
+        });
+        return response.end(served.buffer);
+      }catch(e){if(e.deliveryStatus)return sendJson(response,e.deliveryStatus,{ok:false,error:{code:e.code,message:e.message}});throw e;}
+    }
+    // 仅展示工程建议（advisory）：HTTP 只读；成员 ACL 先于任何建议数据访问；发布不经 HTTP。
+    const advisoryRoute=requestUrl.pathname.match(/^\/api\/workflow\/projects\/([^/]+)\/advisories$/);
+    if(advisoryRoute){
+      if(requestUrl.search)return sendJson(response,400,{ok:false,error:{code:"INVALID_INPUT",message:"工程建议接口不接受路径或身份参数。"}});
+      if(request.method!=="GET")return sendJson(response,405,{ok:false,error:{code:"METHOD_NOT_ALLOWED",message:"工程建议接口只读。"}});
+      const projectId=decodeURIComponent(advisoryRoute[1]);
+      config.store.loadProject(projectId,authContext.actorId);
+      return sendJson(response,200,require("./advisories.cjs").list(config.store,authContext.actorId,projectId));
+    }
     const taskRoute=requestUrl.pathname.match(/^\/api\/workflow\/projects\/([^/]+)\/(taskbooks(?:\/(?:file|analyze)\/[a-f0-9-]+)?|taskbooks-apply|manual-review|manual-review-choice)$/);
     if(taskRoute){
       try {
@@ -886,6 +928,8 @@ function createHttpServer(options) {
           sourceAllowed: (authContext.authorizedSourcePrincipals || []).includes(authContext.actorId),
         });
         loaded.project.delivery_review_available=Boolean(config.deliveryReviews?.has(projectId));
+        // Read-only projection; never writes, never confirms stages (ECOP-WB-L1-WEB-EXECUTE-20260926).
+        loaded.project.business_status=projectBusinessStatus(config.store,projectId,{project:loaded.project,deliveryAvailable:config.deliveryReviews?.has(projectId)});
         return sendJson(response, 200, loaded);
       }
       if (request.method === "GET" && operation === "export") {

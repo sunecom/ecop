@@ -32,10 +32,14 @@ function payload(row,project){
  const name=by.get('project_name')?.value;
  if(typeof name!=='string'||!name.trim()||name.length>120)fail('请填写不超过120字的项目名称。');
  const result=schema.createRequirementsPayload(name);
- result.fields=report.fields.filter(f=>f.target_field.startsWith('requirements.')).map(f=>({
+ const reported=report.fields.filter(f=>f.target_field.startsWith('requirements.')).map(f=>({
   target_field:f.target_field,label:f.label,value:f.value,unit:f.unit,value_basis:f.value_basis,confirmed:false,
   source_status:'source_reported',source_snapshot_value:f.value,source_snapshot_unit:f.unit,source_reference:{...f.source_reference,taskbook_id:row.id,sha256:row.sha256},
  }));
+ // 保留 schema 骨架（简版任务书只填关键条件时，其余字段仍以后续补充形式出现在需求表单），报告值覆盖同名字段，额外字段追加。
+ const skeleton=result.fields.map(f=>reported.find(r=>r.target_field===f.target_field)||f);
+ const skeletonIds=new Set(skeleton.map(f=>f.target_field));
+ result.fields=skeleton.concat(reported.filter(f=>!skeletonIds.has(f.target_field)));
  result.taskbook={id:row.id,sha256:row.sha256,filename:row.filename,blocking_count:report.blocking_count};
  return result;
 }

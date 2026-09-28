@@ -45,7 +45,14 @@ function startLocalWorkflowServer(args = process.argv.slice(2)) {
     const registry=JSON.parse(fs.readFileSync(reviewRegistry,"utf8").replace(/^\uFEFF/,""));
     deliveryReviews=new (require("./delivery-review.cjs").DeliveryReviewCatalog)(registry);
   }
-  const server = createHttpServer({ store, authProvider, trustedProxy, deliveryReviews, basePath: trustedProxyMode ? "/workflow" : "", projectId: projectId || undefined });
+  const reviewDraftsRegistry = argumentValue(args,"--review-drafts-registry",null);
+  let reviewDrafts;
+  if(reviewDraftsRegistry){
+    if(!path.isAbsolute(reviewDraftsRegistry))throw new Error("Review-drafts registry must be an operator-configured absolute file.");
+    const reviewDraftsManifest=JSON.parse(fs.readFileSync(reviewDraftsRegistry,"utf8").replace(/^\uFEFF/,""));
+    reviewDrafts=new (require("./review-drafts.cjs").ReviewDraftsCatalog)(reviewDraftsManifest);
+  }
+  const server = createHttpServer({ store, authProvider, trustedProxy, deliveryReviews, reviewDrafts, basePath: trustedProxyMode ? "/workflow" : "", projectId: projectId || undefined });
   server.listen(port, host, () => {
     const address = server.address();
     console.log(`Workflow service listening on ${host}:${address.port}`);
@@ -53,6 +60,7 @@ function startLocalWorkflowServer(args = process.argv.slice(2)) {
     if (!trustedProxyMode) console.log(`SQLite database: ${store.databasePath}`);
     if (testOnly || trustedProxyMode) console.log("Synthetic mock calculation only. No DWSIM, Aspen, or Aspen EDR calls.");
     if (deliveryReviews) console.log("Read-only delivery registry enabled: existing evidence only; no new engine execution or engineering approval.");
+    if (reviewDrafts) console.log(`Review-drafts registry enabled: ${reviewDrafts.manifest.delivery_id}（只读登记评审草稿阅读/下载；不改变工程确认权限，非正式签发）。`);
   });
   const shutdown = () => server.close(() => {
     store.close();

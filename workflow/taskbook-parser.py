@@ -1,9 +1,66 @@
-"""Bounded, non-executing XLSX reader for ECOP taskbook v1."""
+"""Bounded, non-executing XLSX reader for ECOP taskbook v1 (four sheets) and v2 (one sheet)."""
 import sys, json, zipfile, io, posixpath, re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 NS={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+# ---- 简版一张表（ECOP-TASKBOOK-2）字段映射：客户只见中文名称，内部编码由系统映射 ----
+# (行名称, target_field, 类型, 允许单位, 必填, 是否浓度口径字段)
+V2_ROWS=[
+ ('项目名称','project_name','text',[],True,False),
+ ('客户名称','customer','text',[],False,False),
+ ('物料名称','requirements.fluid_identity','text',[],True,False),
+ ('处理量','requirements.feed_rate','number',['t/h','kg/h','kg/s'],True,False),
+ ('进料浓度','requirements.feed_concentration','number',['wt%','kg/kg','g/L','°Brix'],True,True),
+ ('目标浓度','requirements.product_concentration','number',['wt%','kg/kg','g/L','°Brix'],True,True),
+ ('浓度口径说明','requirements.design_concentration_basis','text',[],False,False),
+ ('进料温度','requirements.feed_temperature','number',['°C','K'],False,False),
+ ('目标出料温度','requirements.product_temperature','number',['°C'],False,False),
+ ('现场大气压','requirements.atmospheric_pressure','number',['kPa(a)','bar(a)','mmHg(a)'],False,False),
+ ('运行方式','requirements.operating_mode','text',[],False,False),
+ ('特殊要求与设计目标','requirements.customer_objective','text',[],False,False),
+ ('原任务书与实验资料说明','source_document','text',[],False,False),
+]
+V2_BASIS={'wt%':'mass_percent','kg/kg':'mass_fraction','g/L':'mass_per_volume','°Brix':'refractometer_brix'}
+
+def parse_v2(cells):
+    defs={r[0]:r for r in V2_ROWS}; seen=set(); fields=[]; issues=[]
+    def issue(cell,row_name,msg):
+        issues.append(dict(sheet='任务书',cell=cell,field=defs[row_name][1] if row_name in defs else row_name,message=msg,impact='推荐',severity='error'))
+    for row in sorted({int(re.search(r'\d+',k)[0]) for k in cells if int(re.search(r'\d+',k)[0])>=4}):
+        vals=[cells.get(f'{col}{row}','') for col in 'ABCD']; name=vals[0].rstrip('*')
+        if not any(vals): continue
+        if name=='填写值': continue
+        if name not in defs:
+            issues.append(dict(sheet='任务书',cell=f'A{row}',field=name,message='未识别的行，已忽略；请使用模板中的行名称。',impact='提示',severity='warning')); continue
+        if name in seen:
+            issue(f'A{row}',name,'行名称重复，请删除多余行。'); continue
+        seen.add(name); _,target,kind,units,required,basis_field=defs[name]
+        raw=vals[1]; unit=vals[2]; note=vals[3]; value=raw or None
+        if value is None:
+            if required: issue(f'B{row}',name,f'{name}是发起工艺推荐所需的关键条件，请填写。')
+            continue
+        if kind=='number':
+            if not re.fullmatch(r'-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?',raw):
+                issue(f'B{row}',name,'请填写有限数值；文字说明移入「说明」列。'); continue
+            value=float(raw)
+            if not -1e12<value<1e12: issue(f'B{row}',name,'数值超出可接受范围。'); continue
+            if not unit: issue(f'C{row}',name,'请填写单位。')
+            elif units and unit not in units: issue(f'C{row}',name,'单位需为：'+' / '.join(units)+'。')
+            if unit in ('t/h','kg/h','kg/s','kPa(a)','bar(a)','mmHg(a)') and value<=0: issue(f'B{row}',name,'此数值必须大于零。')
+            if '温度' in name and value<(-273.15 if unit=='°C' else 0): issue(f'B{row}',name,'温度低于绝对零度。')
+        else:
+            if len(value)>4096: issue(f'B{row}',name,'文本超长。')
+        basis=V2_BASIS.get(unit,'') if basis_field else ''
+        fields.append(dict(target_field=target,label=name,value=value,raw_value=raw,unit=unit,value_basis=basis,data_status='客户填写',source_reference=dict(sheet='任务书',cell=f'B{row}',description=note),note=note))
+    by={f['target_field']:f for f in fields}
+    a=by.get('requirements.feed_concentration',{}); b=by.get('requirements.product_concentration',{})
+    if a.get('value') is not None and b.get('value') is not None:
+        if a.get('unit')!=b.get('unit'): issue(b['source_reference']['cell'],'目标浓度','进出料浓度单位不同，不能直接比较；请统一后填写。')
+        elif isinstance(a['value'],float) and isinstance(b['value'],float) and b['value']<=a['value']: issue(b['source_reference']['cell'],'目标浓度','目标浓度应高于进料浓度，请核对任务目标。')
+    return dict(format_version='ECOP-TASKBOOK-2',fields=fields,experiments=[],issues=issues,blocking_count=sum(x['severity']=='error' for x in issues))
+
 def parse(data):
     if len(data)>300*1024: raise ValueError('任务书上限 300 KiB；请删除图片，附件只填写索引。')
     z=zipfile.ZipFile(io.BytesIO(data)); infos=z.infolist()
@@ -41,6 +98,9 @@ def parse(data):
             if value: cells[ref]=value.strip()
         if len(cells)>5000: raise ValueError('单元格数量超限。')
         sheets[s.get('name')]=cells
+    if set(sheets)=={'任务书'}:
+        if sheets['任务书'].get('A1')=='ECOP-TASKBOOK-2': return parse_v2(sheets['任务书'])
+        raise ValueError('请使用标准任务书模板（简版或四表版）。')
     expected=['设计条件','物性与实验','公用工程与约束','附件与修订']
     if set(sheets)!=set(expected): raise ValueError('请使用标准四工作表模板，不增删或重命名工作表。')
     definitions=json.loads(Path(__file__).with_name('taskbook-fields.json').read_text(encoding='utf8'))
