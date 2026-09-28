@@ -169,24 +169,69 @@
   // ECOP-WB-L1-DOCCARD-20260927: 06 阶段交付物目录只读卡片。
   // 交付目录来自工程师提交的阶段载荷（documents.payload.deliverables），
   // 卡片只读；逐项核对引用版本与哈希后，确认放行仍在阶段动作行完成。
-  function documentsDeliveryCard(payload){
+function documentsDeliveryCard(payload,stageStatus){
     const items=V.documentDeliverables(payload);
     const article=node('article',undefined,'work-card documents-delivery-card');
-    article.append(node('p','已提交的阶段交付物 · 六步一致','work-eyebrow'),
+    const eyebrowMap={
+      'draft':'交付物草稿 · 待提交',
+      'submitted':'已提交的阶段交付物 · 六步一致',
+      'confirmed':'已审核的交付物目录',
+      'stale':'历史交付物 · 依据已变化',
+      'returned':'历史交付物 · 已退回'
+    };
+    const eyebrow=eyebrowMap[stageStatus]||'阶段交付物';
+    const noteMap={
+      'draft':'本卡片只读；交付物草稿待提交审核。',
+      'submitted':'本卡片只读；逐项核对引用版本与内容哈希后，在阶段动作行确认放行。',
+      'confirmed':'本卡片只读；交付物已审核，引用版本以所列为准。',
+      'stale':'当前依据已变化，待重新提交。本卡片保留供历史对照。',
+      'returned':'交付物已退回，待重新提交。本卡片保留供历史对照。'
+    };
+    const note=noteMap[stageStatus]||'本卡片只读。';
+    article.append(node('p',eyebrow,'work-eyebrow'),
       node('h2',`交付物目录（${items.length}）`),
       node('p',`引用来源版本 ${payload.source_revision||'未标注'} · 各交付物以所列阶段确认版本为准`,'muted'),
-      node('p','本卡片只读；逐项核对引用版本与内容哈希后，在阶段动作行确认放行。','muted'));
+      node('p',note,'muted'));
     article.append(tableOf(['#','交付物','依据 / 引用版本'],
       items.map((d,i)=>[String(i+1),d.name,d.note||'—'])));
     if(typeof payload.notes==='string'&&payload.notes.trim())article.append(node('p',`交付说明与适用边界：${payload.notes}`,'work-state'));
     return article;
   }
-  function calculationDeliveryCard(payload,execution){
+  function calculationDeliveryCard(payload,execution,stageStatus,realCalculationDelivered){
+    // 展示状态以当前依据是否匹配为准；此处只改局部展示变量，不写项目审核状态。
+    if(['submitted','confirmed'].includes(stageStatus)&&!realCalculationDelivered){
+      stageStatus='stale';
+    }
     const article=node('article',undefined,'work-card calculation-delivery-card');
-    article.append(node('p','已归类的 Agent 交付 · 真实引擎','work-eyebrow'),
+    const eyebrowMap={
+      'draft':'计算草稿 · 待提交',
+      'submitted':'已归类的 Agent 交付 · 真实引擎',
+      'confirmed':'已审核的真实计算结果',
+      'stale':'历史计算结果 · 依据已变化',
+      'returned':'历史计算结果 · 已退回'
+    };
+    const eyebrow=eyebrowMap[stageStatus]||'计算结果';
+    // 根据stageStatus和realCalculationDelivered决定note
+    let note;
+    if(stageStatus==='submitted'){
+      if(realCalculationDelivered){
+        note='本卡片只读；核验结果、校核项与适用边界后，在阶段动作行确认放行。';
+      } else {
+        note='当前依据已变化，待重新计算。本卡片保留供历史对照。';
+      }
+    } else if(stageStatus==='stale'||stageStatus==='returned'){
+      note='当前依据已变化，待重新计算。本卡片保留供历史对照。';
+    } else if(stageStatus==='confirmed'){
+      note='本卡片只读；计算结果已审核，边界见适用说明。';
+    } else if(stageStatus==='draft'){
+      note='本卡片只读；计算草稿待提交审核。';
+    } else {
+      note='本卡片只读。';
+    }
+    article.append(node('p',eyebrow,'work-eyebrow'),
       node('h2',`${payload.engine.name} ${payload.engine.version} 真实计算结果`),
       node('p',`执行模式：真实引擎 · 模型 ${payload.model_version||'未标注'} · 物性方法 ${payload.property_method||'未标注'}${execution&&execution.delivered_action_id?` · 交付记账 ${execution.delivered_action_id}`:''}`,'muted'),
-      node('p','本卡片只读；核验结果、校核项与适用边界后，在阶段动作行确认放行。','muted'));
+      node('p',note,'muted'));
     const rows=resultRows(payload.results);
     if(rows.length)article.append(tableOf(['项目','结果 / 内容','单位'],rows.map(r=>[r.label,r.value,r.unit||'—'])));
     const checks=payload.checks&&typeof payload.checks==='object'?Object.entries(payload.checks):[];
@@ -227,7 +272,14 @@
     if(overview){
       home.append(node('p','工程方案工作台','work-eyebrow'),node('h1',context.project.title));
       const grid=node('div',undefined,'overview-grid');
-      for(const [label,value,detail] of [['当前方案',model.currentProposal,'仅展示已有项目记录'],['待我处理',model.decisionSummary,'提议需要明确选择；评论不代替确认'],['下一步',model.nextSummary,`负责人：${model.nextOwner}`]]){const card=node('section',undefined,'work-card');card.append(node('p',label,'work-eyebrow'),node('h2',value),node('p',detail,'muted'));grid.append(card);}home.append(grid);
+    // 消费 executionSummary（由 workflow-view.js 提供）
+    if (model.executionSummary) {
+      const summaryCard = node('section', undefined, 'work-card execution-summary');
+      summaryCard.append(node('p', '执行摘要', 'work-eyebrow'));
+      summaryCard.append(node('h2', model.executionSummary));
+      home.append(summaryCard);
+    }
+      for(const [label,value,detail] of [['当前方案',model.currentProposal,model.currentProposalNote||'仅展示已有项目记录'],['待我处理',model.decisionSummary,'提议需要明确选择；评论不代替确认'],['下一步',model.nextSummary,`负责人：${model.nextOwner}`]]){const card=node('section',undefined,'work-card');card.append(node('p',label,'work-eyebrow'),node('h2',value),node('p',detail,'muted'));grid.append(card);}home.append(grid);
       const actions=node('div',undefined,'work-toolbar');actions.append(button('进入需求与任务书',()=>context.onStage('requirements')),button('查看方案与文件',()=>context.onStage('documents'),false,true));home.append(actions);
     }
     const toolbar=node('div',undefined,'work-toolbar');toolbar.append(button('刷新处理结果',()=>{message='';load(true);},busy||states.reviews==='loading',true));
@@ -253,7 +305,7 @@
     const calculationPayload=!overview&&activeView==='calculation'&&V.isRealEngineCalculation(context.project.stages.calculation?.payload)?context.project.stages.calculation.payload:null;
     const stageRecordPresent=!overview&&activeView!=='requirements'&&activeView!=='documents'&&V.stageRecordPresent(context.project.stages[activeView]?.payload);
     if(!records.length&&!calculationPayload&&!overview&&activeView!=='requirements'&&activeView!=='documents')area.append(node('p',stageRecordPresent?'本步骤以工程师提交的结构化阶段记录为准，内容见下方「阶段版本与高级编辑」；此处无 Agent 交付卡。':'本步骤暂没有已归类的 Agent 交付。旧记录可在总览查看；需要工程依据时由柯大侠接续。','work-empty'));
-    if(calculationPayload)main.append(calculationDeliveryCard(calculationPayload,context.project.execution_context));
+    if(calculationPayload)main.append(calculationDeliveryCard(calculationPayload,context.project.execution_context,context.project.stages.calculation?.status,model.realCalculationDelivered));
     if(!overview){for(const n of model.stages.find(s=>s.id===activeView)?.evidence||[])main.append(evidenceCard(n));}
     if(overview){
       const history=model.unclassified.filter(r=>!unclassifiedActive.includes(r));
@@ -263,11 +315,11 @@
     }
     const documentsPayload=activeView==='documents'&&!overview&&V.documentDeliverables(context.project.stages.documents?.payload).length?context.project.stages.documents.payload:null;
     if(activeView==='documents'){
-      if(documentsPayload)main.append(documentsDeliveryCard(documentsPayload));
+      if(documentsPayload)main.append(documentsDeliveryCard(documentsPayload,context.project.stages.documents?.status));
       main.append(node('h2','同版评审文件'),node('p',model.deliveryMessage,'work-message'));
       for(const [id,title] of [['technical-proposal','技术方案评审稿'],['calculation-book','计算依据与结果'],['equipment-parameters','设备参数核对稿']])main.append(button(`下载${title}`,()=>download(id),!model.currentDelivery||busy,true));
       main.append(node('p','每次下载重新核对项目版本、证据快照与三份内容哈希；评审草稿不等于正式工程签发。','muted'));
-
+      
       // 评审草稿（受控）下载区
       const draftSection=node('section',undefined,'work-card review-drafts-section');
       draftSection.append(node('h3','评审草稿（受控）'));

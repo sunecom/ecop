@@ -14,21 +14,21 @@
   --warning: #c9a227;
   --danger: #b34a4a;
   --success: #4a8c6f;
-
+  
   --sans: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   --serif: "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
-
+  
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
   --space-2xl: 48px;
-
+  
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-
+  
   --shadow-sm: 0 1px 3px rgb(30 47 39 / 6%);
   --shadow-md: 0 4px 12px rgb(30 47 39 / 8%);
   --shadow-lg: 0 8px 24px rgb(30 47 39 / 12%);
@@ -815,7 +815,7 @@ th {
     gap: var(--space-md);
     padding: var(--space-md);
   }
-
+  
   .topbar {
     display: flex;
     flex-wrap: wrap;
@@ -825,18 +825,18 @@ th {
     min-height: auto;
     height: auto !important;
   }
-
+  
   .brand {
     flex: 0 0 auto;
   }
-
+  
   .topbar-center {
     flex: 1 1 auto;
     min-width: 200px;
     flex-wrap: wrap;
     gap: var(--space-sm);
   }
-
+  
   .topbar-right {
     flex: 0 0 auto;
     flex-wrap: wrap;
@@ -857,18 +857,18 @@ th {
     white-space: nowrap;
     margin-bottom: var(--space-md);
   }
-
+  
   .workspace {
     grid-template-columns: 1fr;
     padding: var(--space-md);
   }
-
+  
   .workflow-rail,
   .stage-column {
     width: 100%;
     min-width: 0;
   }
-
+  
   .workflow-rail {
     display: none;
     position: static;
@@ -876,11 +876,11 @@ th {
     width: 100%;
     margin-bottom: var(--space-lg);
   }
-
+  
   .workflow-rail.is-open {
     display: block;
   }
-
+  
   .topbar {
     display: flex;
     flex-wrap: wrap;
@@ -890,7 +890,7 @@ th {
     min-height: auto;
     height: auto !important;
   }
-
+  
   .brand,
   .topbar-center,
   .topbar-right {
@@ -899,11 +899,11 @@ th {
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
-
+  
   .brand {
     flex: 0 0 auto;
   }
-
+  
   .topbar-center {
     flex: 1 1 100%;
     order: 2;
@@ -911,7 +911,7 @@ th {
     gap: var(--space-xs);
     font-size: 14px;
   }
-
+  
   .topbar-right {
     flex: 0 0 100%;
     order: 1;
@@ -919,36 +919,36 @@ th {
     gap: var(--space-xs);
     font-size: 13px;
   }
-
+  
   .topbar-center #project-title {
     font-size: 15px !important;
   }
-
+  
   .overview-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .step-name {
     font-size: 15px !important;
   }
-
+  
   .project-home {
     padding: var(--space-md);
   }
-
+  
   .business-home-head {
     flex-direction: column;
     align-items: flex-start;
   }
-
+  
   .account-boundary {
     max-width: 100%;
   }
-
+  
   .work-toolbar {
     flex-direction: column;
   }
-
+  
   .work-toolbar .button,
   .work-toolbar button {
     width: 100%;
@@ -959,42 +959,42 @@ th {
   .topbar {
     padding: var(--space-sm) var(--space-md);
   }
-
+  
   .brand-word {
     font-size: 16px;
   }
-
+  
   .brand-word span {
     font-size: 9px;
   }
-
+  
   .topbar-center {
     font-size: 13px;
   }
-
+  
   .topbar-right {
     font-size: 12px;
   }
-
+  
   .revision-pill,
   .demo-pill,
   .context-pill {
     font-size: 12px;
     padding: 4px 8px;
   }
-
+  
   .project-home {
     padding: var(--space-sm);
   }
-
+  
   .business-home-head h1 {
     font-size: 24px;
   }
-
+  
   .work-card {
     padding: var(--space-md);
   }
-
+  
   .work-card h2 {
     font-size: 20px;
   }
@@ -1030,4 +1030,52 @@ textarea:focus-visible {
   border-radius: var(--radius-sm);
   color: #2e7d32;
   margin: var(--space-md) 0;
+}
+
+/* workspace-layout.css - 布局修复（v6追加） */
+
+/* 修复：760px以下菜单折叠不占主内容列 */
+@media (max-width: 760px) {
+  .workflow-rail {
+    position: static;
+    max-height: none;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  .workflow-rail:not(.is-open) {
+    display: none;
+  }
+  .stage-column {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: 100%;
+  }
+}
+
+/* 修复：390px宽度布局 */
+@media (max-width: 390px) {
+  .workflow-rail {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: 100%;
+    padding: 12px;
+  }
+  .stage-column {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: 100%;
+    padding: 0 12px;
+  }
+  .workspace-menu-toggle {
+    width: 100%;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .case-pfd-canvas {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .case-pfd-canvas svg {
+    min-width: 600px;
+  }
 }

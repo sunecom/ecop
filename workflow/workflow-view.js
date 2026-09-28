@@ -42,6 +42,68 @@
     if (!payload.results || typeof payload.results !== 'object' || Array.isArray(payload.results)) return false;
     return true;
   }
+  function dependencyMatches(stage, stageId, revision) {
+    return Array.isArray(stage?.depends_on)
+      && stage.depends_on.some(item=>item && item.stage_id===stageId && item.revision===revision);
+  }
+  function calculationProjection(project) {
+    const requirements=project?.stages?.requirements;
+    const pfd=project?.stages?.pfd;
+    const calculation=project?.stages?.calculation;
+    const payload=calculation?.payload;
+    const real=Boolean(calculation && isRealEngineCalculation(payload));
+    const current=Boolean(real
+      && ['submitted','confirmed'].includes(calculation.status)
+      && requirements?.status==='confirmed'
+      && pfd?.status==='confirmed'
+      && payload.input_revision===requirements.revision
+      && payload.pfd_revision===pfd.revision
+      && dependencyMatches(calculation,'pfd',pfd.revision));
+    return {
+      current,
+      historical:real && !current,
+      reviewable:current && calculation.status==='submitted',
+      confirmed:current && calculation.status==='confirmed'
+    };
+  }
+  function backendCalculationProjection(status) {
+    const review=status?.calculation_review || {};
+    const current=review.current===true || review.delivered===true;
+    return {
+      current,
+      historical:review.historical===true,
+      reviewable:current && review.reviewable===true,
+      confirmed:current && review.confirmed===true
+    };
+  }
+  function executionSummary(calculation, stageStatus) {
+    if (calculation.reviewable) return '当前流程已有可追溯的真实计算结果，待审核确认。';
+    if (calculation.confirmed) return '当前流程真实计算结果已确认。';
+    if (calculation.historical) return '存在历史真实计算记录，但与当前流程、输入或依赖版本不一致，须重新计算。';
+    if (stageStatus==='returned') return '工程计算已退回，须按当前流程修订或重新计算。';
+    if (stageStatus==='stale') return '当前流程尚无有效真实计算结果，须按已确认流程重新计算。';
+    if (stageStatus==='draft') return '当前流程计算仍为草稿，不能视为已交付。';
+    return '当前流程尚无有效真实计算结果。';
+  }
+  function proposalNote(hasHistoricalChoice) {
+    return hasHistoricalChoice
+      ? '该名称来自历史已保存的工艺选择，不代表当前工程通过；请以已确认流程、当前有效计算与审核结论为准。'
+      : '未形成当前工程通过结论；请以已确认流程、当前有效计算与审核结论为准。';
+  }
+  function nextActionFromCurrentState({project, needsChoice, processing, selected, currentDelivery, calculation}) {
+    const pfdStatus=project?.stages?.pfd?.status;
+    const equipmentStatus=project?.stages?.equipment?.status;
+    const documentsStatus=project?.stages?.documents?.status;
+    if (pfdStatus==='confirmed' && !calculation.current) return {text:'按当前已确认流程重新执行真实工程计算并交付可追溯结果。',owner:'柯大侠'};
+    if (needsChoice.length) return {text:'审阅建议并选择，决定将保存到项目。',owner:'客户 / 工程负责人'};
+    if (processing.length) return {text:'柯大侠处理已提交的任务，完成后回写到这里。',owner:'柯大侠'};
+    if (calculation.reviewable) return {text:'审阅当前流程真实计算结果的溯源、校核项与适用边界，确认后放行下一步。',owner:'审核人 / 工程负责人'};
+    if (calculation.confirmed && ['draft','returned','stale'].includes(equipmentStatus)) return {text:'按当前已确认计算刷新设备适配与规格依据。',owner:'柯大侠'};
+    if (calculation.confirmed && equipmentStatus==='confirmed' && ['draft','returned','stale'].includes(documentsStatus)) return {text:'按当前设备依据刷新方案与交付文件。',owner:'柯大侠'};
+    if (currentDelivery) return {text:'审阅同版方案、计算依据和设备待核项，柯大侠接续工程核对。',owner:'工程负责人 / 柯大侠'};
+    if (selected) return {text:'柯大侠根据所选工艺细化流程与计算依据。',owner:'柯大侠'};
+    return {text:'提交现有任务书或需求，发起工艺推荐。',owner:'资料录入者'};
+  }
   // ECOP-WB-L1-STAGE-NOTE-20260927: 工程师提交的结构化阶段记录（pfd/equipment 等）
   // 不是 manual_reviews 里的 Agent 交付卡，但同样代表本步骤已有内容；据其是否非空
   // 决定空态提示措辞，避免审核人误以为本步骤什么都没有。
@@ -67,7 +129,8 @@
     const reviews = requestStates.reviews === 'error' ? [] : manualReviews.filter(r=>r && typeof r.id==='string');
     const delivery = requestStates.delivery === 'error' ? null : deliveryReview;
     const currentDelivery = Boolean(delivery?.ok && delivery.review?.status==='local_review_snapshot' && delivery.review.project_id===status.project_id && delivery.review.project_revision===status.project_revision);
-    const realCalculationDelivered = status.calculation_review ? status.calculation_review.delivered === true : false;
+    const calculationReview=backendCalculationProjection(status);
+    const realCalculationDelivered=calculationReview.current;
     const valid = reviews.filter(r=>!r.stale);
     const known = valid.filter(r=>reviewStage(r));
     const needsChoice = valid.filter(r=>r.status==='awaiting_choice');
@@ -80,12 +143,15 @@
     const selectedChoice = Array.isArray(status.selected_choices) ? status.selected_choices.find(c=>c.stage==='selection') : null;
     const selectedReview = selectedChoice ? reviews.find(r=>r.id===selectedChoice.review_id) : null;
     const selectedOption = selectedReview?.response?.options?.find(o=>o.id===selectedChoice.choice);
+    const hasHistoricalChoice=Boolean(selectedOption || selectedReview?.response?.summary);
     const unclassified=reviews.filter(r=>!reviewStage(r));
     const focus=needsChoice[0] ? reviewStage(needsChoice[0])||'overview' : processing[0] ? reviewStage(processing[0])||'overview' : known[0] ? reviewStage(known[0]) : 'overview';
     const nextAction = status.next_action || {text:'暂无待办。',owner:'—'};
     return {
       stages, focus, unclassified, needsChoice, processing, currentDelivery, realCalculationDelivered,
       currentProposal: selectedOption?.name || (selectedReview?.response?.summary) || (currentDelivery ? '已有同版方案评审稿' : '尚无已归类的工艺选择'),
+      currentProposalNote: proposalNote(hasHistoricalChoice),
+      executionSummary: executionSummary(calculationReview, status.stages.find(s=>s.id==='calculation')?.stage_status),
       decisionSummary: needsChoice.length ? `${needsChoice.length} 项提议待你选择` : '暂无待选择提议',
       nextSummary: nextAction.text,
       nextOwner: nextAction.owner,
@@ -101,7 +167,8 @@
     const reviews = requestStates.reviews === 'error' ? [] : manualReviews.filter(r=>r && typeof r.id==='string');
     const delivery = requestStates.delivery === 'error' ? null : deliveryReview;
     const currentDelivery = Boolean(delivery?.ok && delivery.review?.status==='local_review_snapshot' && delivery.review.project_id===project?.project_id && delivery.review.project_revision===project?.revision);
-    const realCalculationDelivered = isRealEngineCalculation(project?.stages?.calculation?.payload);
+    const calculationReview=calculationProjection(project);
+    const realCalculationDelivered=calculationReview.current;
     const valid = reviews.filter(r=>!r.stale);
     const known = valid.filter(r=>reviewStage(r));
     const latest = stage=>known.find(r=>reviewStage(r)===stage);
@@ -113,26 +180,32 @@
       const evidence=nodes.filter(n=>nodeStage(n.id)===id);
       let label='待推进';
       if(state==='stale')label='需更新';
+      else if(state==='returned')label='需修订';
+      else if(id==='calculation' && calculationReview.reviewable)label='当前流程真实计算结果已交付 · 待审核';
+      else if(id==='calculation' && calculationReview.confirmed)label='当前流程真实计算结果已确认';
       else if(review?.status==='awaiting_choice')label='待选择';
       else if(review?.status==='selected')label='已选择 · 可接续';
       else if(['queued','processing'].includes(review?.status))label='柯大侠处理中';
       else if(review?.response || evidence.length)label='已有依据 · 待审阅';
-      else if(id==='calculation' && realCalculationDelivered && state==='submitted')label='真实计算结果已交付 · 待审核';
       else if(id==='requirements')label=project?.stages?.requirements?.payload?.taskbook?'任务书已采用':'可提交任务书';
       else if(state==='confirmed')label='阶段记录已确认';
-      else if(state==='returned')label='需修订';
       return {id,title:TITLES[id],label,approvalStatus:state||'draft',reviews:reviews.filter(r=>reviewStage(r)===id),evidence};
     });
     const selected=known.find(r=>reviewStage(r)==='selection' && r.status==='selected');
-    const selectedOption=selected?.response?.options?.find(o=>o.id===selected.choice);
+    const historicalSelected=reviews.find(r=>reviewStage(r)==='selection' && r.status==='selected');
+    const selectedOption=historicalSelected?.response?.options?.find(o=>o.id===historicalSelected.choice);
+    const hasHistoricalChoice=Boolean(selectedOption || historicalSelected?.response?.summary);
     const unclassified=reviews.filter(r=>!reviewStage(r));
     const focus=needsChoice[0] ? reviewStage(needsChoice[0])||'overview' : processing[0] ? reviewStage(processing[0])||'overview' : known[0] ? reviewStage(known[0]) : 'overview';
+    const nextAction=nextActionFromCurrentState({project,needsChoice,processing,selected,currentDelivery,calculation:calculationReview});
     return {
       stages, focus, unclassified, needsChoice, processing, currentDelivery, realCalculationDelivered,
-      currentProposal: selectedOption?.name || (selected?.response?.summary) || (currentDelivery ? '已有同版方案评审稿' : '尚无已归类的工艺选择'),
+      currentProposal: selectedOption?.name || (historicalSelected?.response?.summary) || (currentDelivery ? '已有同版方案评审稿' : '尚无已归类的工艺选择'),
+      currentProposalNote: proposalNote(hasHistoricalChoice),
+      executionSummary: executionSummary(calculationReview, project?.stages?.calculation?.status),
       decisionSummary: needsChoice.length ? `${needsChoice.length} 项提议待你选择` : '暂无待选择提议',
-      nextSummary: needsChoice.length ? '审阅建议并选择，决定将保存到项目。' : processing.length ? '柯大侠处理已提交的任务，完成后回写到这里。' : currentDelivery ? '审阅同版方案、计算依据和设备待核项，柯大侠接续工程核对。' : selected ? '柯大侠根据所选工艺细化流程与计算依据。' : '提交现有任务书或需求，发起工艺推荐。',
-      nextOwner: needsChoice.length ? '客户 / 工程负责人' : currentDelivery ? '工程负责人 / 柯大侠' : processing.length || selected ? '柯大侠' : '资料录入者',
+      nextSummary: nextAction.text,
+      nextOwner: nextAction.owner,
       deliveryMessage: currentDelivery ? '三份评审稿引用同一数据快照；设备待核项保留。' : delivery?.ok ? '依据已变化，当前旧稿停止下载。' : '尚无可下载的同版评审稿。',
     };
   }
@@ -146,5 +219,5 @@
     for(const d of bundle.documents)if(d.snapshot_sha256!==bundle.review.snapshot_sha256 || typeof d.content!=='string' || !d.content || !/^[a-f0-9]{64}$/i.test(d.sha256||''))throw Error('三份文件版本或内容校验信息不一致。');
     return bundle;
   }
-  return Object.freeze({STAGES,TITLES,reviewStage,nodeStage,isRealEngineCalculation,stageRecordPresent,documentDeliverables,deriveWorkflowView,validateBundle});
+  return Object.freeze({STAGES,TITLES,reviewStage,nodeStage,isRealEngineCalculation,calculationProjection,stageRecordPresent,documentDeliverables,deriveWorkflowView,validateBundle});
 });

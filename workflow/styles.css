@@ -448,3 +448,75 @@ button.topbar-home, .project-select, .revision-pill, .demo-pill { font-size: 12p
 }
 
 .taskbook-panel{background:#fff;border:1px solid #d8e3dc;border-radius:16px;padding:24px;margin-bottom:20px;font-size:16px;line-height:1.7;min-width:0}.taskbook-panel h2{font-size:24px;margin:0 0 12px}.taskbook-panel h3{font-size:19px}.taskbook-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:16px 0}.taskbook-panel input,.taskbook-panel select{font-size:16px;max-width:100%;min-height:44px}.taskbook-message{color:#9b341d;font-weight:600}.taskbook-current{background:#eef5ed;padding:12px}.taskbook-issues{padding-left:24px;max-height:380px;overflow:auto}.taskbook-issues li{padding:8px}.taskbook-issues .error{color:#9b341d}.taskbook-issues .warning{color:#68561d}.taskbook-table-wrap{overflow:auto}.taskbook-panel table{width:100%;border-collapse:collapse;font-size:15px}.taskbook-panel th,.taskbook-panel td{padding:10px;text-align:left;border-bottom:1px solid #ddd;overflow-wrap:anywhere}.taskbook-panel summary{cursor:pointer;padding:14px 0;font-weight:bold}.taskbook-hint{color:#58685f;font-size:14px}.taskbook-panel details p{overflow-wrap:anywhere}
+
+/* 修复：390px 宽布局 - 菜单折叠不占主内容列 */
+@media (max-width: 760px) {
+  .workspace-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+  }
+  .workflow-rail {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 12px;
+  }
+  .workspace-main {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 390px) {
+  .workspace-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .workflow-rail {
+    width: 100% !important;
+    padding: 8px !important;
+  }
+  .workspace-main {
+    width: 100% !important;
+    padding: 0 8px !important;
+    overflow-x: hidden;
+  }
+  /* PFD 大图允许独立横向滚动 */
+  .case-pfd-preview {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .case-pfd-canvas {
+    min-width: 600px;
+  }
+}
+
+/* 修复：PFD 状态 badge 样式 */
+.pfd-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+.pfd-status-badge.status-draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+.pfd-status-badge.status-submitted {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.pfd-status-badge.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+.pfd-status-badge.status-stale {
+  background: #fee2e2;
+  color: #991b1b;
+}

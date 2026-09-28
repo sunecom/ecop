@@ -594,16 +594,19 @@
         group.append(element("rect", { width: 196, height: 78, rx: 12, fill: "#fffefa", stroke: "#9fb8aa", "stroke-width": 1.5 }));
         const kindText = String(node.kind || "PFD 节点");
         const labelText = String(node.label || node.id || `节点 ${index + 1}`);
-        const kindElement = element("text", { x: 14, y: 25, fill: "#718178", "font-size": 11 }, kindText.slice(0, 28));
-        if (kindText.length > 28) {
-          kindElement.append(element("title", {}, kindText));
-        }
-        group.append(kindElement);
-        const labelElement = element("text", { x: 14, y: 51, fill: "#253d32", "font-size": 14, "font-weight": 600 }, labelText.slice(0, 30));
-        if (labelText.length > 30) {
-          labelElement.append(element("title", {}, labelText));
-        }
-        group.append(labelElement);
+        // 使用 foreignObject 实现文本换行和裁剪
+        const fo = element("foreignObject", { x: 10, y: 10, width: 176, height: 58 });
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:11px;line-height:1.3;color:#718178;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;";
+        div.textContent = kindText;
+        div.title = kindText;
+        fo.append(div);
+        const div2 = document.createElement("div");
+        div2.style.cssText = "font-size:14px;font-weight:600;line-height:1.3;color:#253d32;margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;";
+        div2.textContent = labelText;
+        div2.title = labelText;
+        fo.append(div2);
+        group.append(fo);
         svg.append(group);
       });
       const statusNoteMap = {
@@ -836,6 +839,26 @@
     refs.footerContext.textContent=businessProject?'每一步保留输入、决定和计算依据；工程签发另行审核。':refs.footerContext.textContent;
     window.ECOPWorkspaceUI.render({project,controller,config:workflowConfig,adapter,business:businessProject,role,
       onStage(id){window.ECOPWorkspaceUI.navigate(id);controller.selectStage(id);}});
+    // 动态更新 PFD 状态 badge
+    const statusBadge = document.getElementById('pfd-status-badge');
+    const pfdStage = project.stages.pfd;
+    const pfdStatus = pfdStage ? pfdStage.status : "unknown";
+    if (statusBadge) {
+      const statusTextMap = {
+        'draft': '草稿',
+        'submitted': '待审核',
+        'confirmed': '结构已确认',
+        'stale': '依据已变化'
+      };
+      const statusClassMap = {
+        'draft': 'status-draft',
+        'submitted': 'status-submitted',
+        'confirmed': 'status-confirmed',
+        'stale': 'status-stale'
+      };
+      statusBadge.textContent = statusTextMap[pfdStatus] || '状态未知';
+      statusBadge.className = 'pfd-status-badge ' + (statusClassMap[pfdStatus] || '');
+    }
   }
 
   function readPayload() {

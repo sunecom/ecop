@@ -34,11 +34,51 @@ function stageOf(row) {
   return STAGES.includes(stage) ? stage : null;
 }
 
-function nextAction(counts, latestRow, deliveryAvailable, hasRequirements, calculationReviewable) {
+function dependencyMatches(stage, stageId, revision) {
+  return Array.isArray(stage && stage.depends_on)
+    && stage.depends_on.some(item => item && item.stage_id === stageId && item.revision === revision);
+}
+
+function calculationProjection(project) {
+  const stages = project && project.stages ? project.stages : {};
+  const requirements = stages.requirements || null;
+  const pfd = stages.pfd || null;
+  const calculation = stages.calculation || null;
+  const payload = calculation && calculation.payload;
+  const historical = Boolean(calculation && isRealEngineCalculation(payload));
+  const eligibleStatus = calculation && ['submitted', 'confirmed'].includes(calculation.status);
+  const revisionsMatch = Boolean(
+    requirements && pfd && payload
+    && payload.input_revision === requirements.revision
+    && payload.pfd_revision === pfd.revision
+    && dependencyMatches(calculation, 'pfd', pfd.revision)
+  );
+  const prerequisitesConfirmed = Boolean(
+    requirements && requirements.status === 'confirmed'
+    && pfd && pfd.status === 'confirmed'
+  );
+  const current = historical && eligibleStatus && revisionsMatch && prerequisitesConfirmed;
+  return {
+    delivered: current,
+    current,
+    historical: historical && !current,
+    reviewable: current && calculation.status === 'submitted',
+    confirmed: current && calculation.status === 'confirmed',
+  };
+}
+
+function nextAction(counts, latestRow, deliveryAvailable, hasRequirements, calculationReview, project) {
   const latest = latestRow || null;
+  const stages = project && project.stages ? project.stages : {};
+  const pfdStatus = stages.pfd ? stages.pfd.status : 'draft';
+  const equipmentStatus = stages.equipment ? stages.equipment.status : 'draft';
+  const documentsStatus = stages.documents ? stages.documents.status : 'draft';
+  if (pfdStatus === 'confirmed' && !calculationReview.current) return { key: 'recalculate', text: '按当前已确认流程重新执行真实工程计算并交付可追溯结果。', owner: '柯大侠' };
   if (counts.awaiting_choice > 0) return { key: 'choose', text: '审阅待选提议并保存选择；选择保存后由柯大侠接续。', owner: '客户' };
   if (counts.queued + counts.processing > 0) return { key: 'await_agent', text: '柯大侠处理已提交的任务，完成后回写。', owner: '柯大侠' };
-  if (calculationReviewable) return { key: 'calculation_review', text: '审阅真实计算结果的溯源、校核项与适用边界，确认后放行下一步。', owner: '审核人 / 工程负责人' };
+  if (calculationReview.reviewable) return { key: 'calculation_review', text: '审阅当前流程真实计算结果的溯源、校核项与适用边界，确认后放行下一步。', owner: '审核人 / 工程负责人' };
+  if (calculationReview.confirmed && ['draft', 'returned', 'stale'].includes(equipmentStatus)) return { key: 'equipment_update', text: '按当前已确认计算刷新设备适配与规格依据。', owner: '柯大侠' };
+  if (calculationReview.confirmed && equipmentStatus === 'confirmed' && ['draft', 'returned', 'stale'].includes(documentsStatus)) return { key: 'documents_update', text: '按当前设备依据刷新方案与交付文件。', owner: '柯大侠' };
   if (latest && latest.status === 'selected') return { key: 'refine', text: '柯大侠按所选工艺细化流程与计算依据。', owner: '柯大侠' };
   if (latest && latest.status === 'completed') return { key: 'engineering_check', text: '评审已处理；工程放行、设备定型与待核项另行核对。', owner: '工程负责人 / 柯大侠' };
   if (deliveryAvailable) return { key: 'review_drafts', text: '审阅三份同版评审稿；设备待核项保留。', owner: '客户 / 柯大侠' };
@@ -73,20 +113,20 @@ function projectBusinessStatus(store, projectId, options = {}) {
     }
     if (row.status === 'selected') selectedChoices.push({ review_id: row.id, stage, choice: row.choice || null, updated_at: row.updated_at || null });
   }
-  const calculationStage = project && project.stages ? project.stages.calculation : null;
-  const calculationDelivered = Boolean(calculationStage && isRealEngineCalculation(calculationStage.payload));
-  const calculationReviewable = calculationDelivered && calculationStage.status === 'submitted';
+  const calculationReview = calculationProjection(project);
   const stages = STAGES.map(id => {
     const s = stageStats[id];
     const stageStatus = project && project.stages && project.stages[id] ? (project.stages[id].status || 'draft') : 'draft';
     let display = 'unconfirmed', label = '阶段未确认';
-    if (s.latest_review_status) {
+    if (stageStatus === 'stale') { display = 'stale'; label = '需更新'; }
+    else if (stageStatus === 'returned') { display = 'returned'; label = '需修订'; }
+    else if (id === 'calculation' && calculationReview.reviewable) { display = 'delivered_review'; label = '当前流程真实计算结果已交付 · 待审核'; }
+    else if (id === 'calculation' && calculationReview.confirmed) { display = 'confirmed'; label = '当前流程真实计算结果已确认'; }
+    else if (s.latest_review_status) {
       display = s.latest_review_status;
       label = REVIEW_LABELS[s.latest_review_status] || '评审状态待核对';
-    } else if (id === 'calculation' && calculationReviewable) { display = 'delivered_review'; label = '真实计算结果已交付 · 待审核'; }
+    }
     else if (stageStatus === 'confirmed') { display = 'confirmed'; label = '阶段记录已确认'; }
-    else if (stageStatus === 'returned') { display = 'returned'; label = '需修订'; }
-    else if (stageStatus === 'stale') { display = 'stale'; label = '需更新'; }
     else if (id === 'requirements' && project && project.stages && project.stages.requirements && project.stages.requirements.payload && project.stages.requirements.payload.taskbook) { display = 'has_material'; label = '任务书已采用'; }
     return { id, title: TITLES[id], stage_status: stageStatus, review_count: s.review_count, latest_review_status: s.latest_review_status, latest_choice: s.latest_choice, has_response: s.has_response, display, label };
   });
@@ -100,17 +140,17 @@ function projectBusinessStatus(store, projectId, options = {}) {
     stages,
     selected_choices: selectedChoices,
     latest_review: rows.length ? { id: rows[0].id, status: rows[0].status } : null,
-    next_action: nextAction(counts, rows[0] || null, deliveryAvailable, hasRequirements, calculationReviewable),
-    calculation_review: { delivered: calculationDelivered, reviewable: calculationReviewable },
+    next_action: nextAction(counts, rows[0] || null, deliveryAvailable, hasRequirements, calculationReview, project),
+    calculation_review: calculationReview,
     delivery_review_available: deliveryAvailable,
     boundaries: [
       'completed 仅代表评审处理完成，不等于工程通过或设备定型。',
       'selected 仅代表已保存的选择；依据变化后需重新确认，不自动套用到新条件。',
       '阶段 confirmed 只来自项目记录本身，本映射不自动确认任何阶段。',
       '无 workflow_stage 的评审计为未归类，不猜测其步骤归属。',
-      'delivered_review 表示 04 阶段载荷已含真实引擎交付（含溯源证据），仅提示待审核；阶段 confirmed 仍需审核人确认。'
+      'delivered_review 仅表示当前输入与依赖版本一致的真实引擎结果待审核；历史真实计算不代表当前交付。'
     ]
   };
 }
 
-module.exports = { projectBusinessStatus, STAGES, TITLES };
+module.exports = { projectBusinessStatus, calculationProjection, STAGES, TITLES };
