@@ -18,8 +18,34 @@
   // ECOP-WB-L1-CALCREVIEW-20260927: 真实引擎计算交付判定（前端只读判定，与后端
   // calculation-delivery.cjs isRealEngineCalculation 同规则）。仅服务侧交付通道写入的
   // 载荷视为工程依据；合成/手工载荷一律不算，因此不能解锁审核确认。
-  const ENGINE_EVIDENCE_KINDS = ['flowsheet_model','results_record','flowsheet_screenshot'];
-  const REQUIRED_EVIDENCE_KINDS = ['flowsheet_model','results_record'];
+  const CALCULATION_METHODS = new Set(['native_flowsheet', 'engine_properties_explicit_balances']);
+  const ENGINE_EVIDENCE_KINDS = new Set(['flowsheet_model','results_record','flowsheet_screenshot','calculation_model','calculation_input']);
+  // ECOP-WB-L1-SCHEME-REVIEW-20260929: 兼容旧 native_flowsheet 和新 engine_properties_explicit_balances
+  const NATIVE_REQUIRED = ['flowsheet_model','results_record'];
+  const SCHEME_REQUIRED = ['calculation_model','calculation_input','results_record'];
+
+  function calculationMethod(payload) {
+    if (!payload || payload.calculation_method === undefined) return 'native_flowsheet';
+    return CALCULATION_METHODS.has(payload.calculation_method) ? payload.calculation_method : null;
+  }
+
+
+  function hasSchemeReviewDisclosure(payload) {
+    if (typeof payload.source_result_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(payload.source_result_sha256)) return false;
+    if (!Array.isArray(payload.claim_limits) || payload.claim_limits.length === 0
+      || payload.claim_limits.some(item => typeof item !== 'string' || !item.trim())) return false;
+    const findings = payload.source_findings;
+    if (!findings || typeof findings !== 'object' || Array.isArray(findings)) return false;
+    if (!findings.checks || typeof findings.checks !== 'object' || Array.isArray(findings.checks)
+      || Object.keys(findings.checks).length === 0) return false;
+    if (!Array.isArray(findings.warnings) || !Array.isArray(findings.unmet_conditions)) return false;
+    const unmet = new Set(findings.unmet_conditions);
+    const failedChecks = Object.entries(findings.checks)
+      .filter(([, value]) => value === false || value === 'fail' || value === 'failed')
+      .map(([key]) => key);
+    return failedChecks.every(key => unmet.has(key));
+  }
+
   function isRealEngineCalculation(payload) {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
     if (payload.execution_mode !== 'real_engine') return false;
@@ -27,18 +53,34 @@
     if (!engine || typeof engine !== 'object' || Array.isArray(engine)) return false;
     if (typeof engine.name !== 'string' || !engine.name.trim()) return false;
     if (typeof engine.version !== 'string' || !engine.version.trim()) return false;
-    if (!Array.isArray(payload.evidence) || !payload.evidence.length) return false;
+    const method = calculationMethod(payload);
+    if (!method) return false;
+    if (payload.engineering_release !== undefined && payload.engineering_release !== false) return false;
+    if (method === 'engine_properties_explicit_balances') {
+      if (payload.validation_scope !== 'scheme_review' || payload.engineering_release !== false) return false;
+    } else if (payload.validation_scope !== undefined && payload.validation_scope !== 'scheme_review') {
+      return false;
+    }
+    if (!Array.isArray(payload.evidence) || payload.evidence.length === 0) return false;
     const kinds = new Set();
     for (const item of payload.evidence) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
-      if (typeof item.kind !== 'string' || !ENGINE_EVIDENCE_KINDS.includes(item.kind)) return false;
-      if (typeof item.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(item.sha256)) return false;
+      if (typeof item.kind !== 'string' || !ENGINE_EVIDENCE_KINDS.has(item.kind)) return false;
+      if (typeof item.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(item.sha256)) return false;
       if (!Number.isInteger(item.bytes) || item.bytes <= 0) return false;
       kinds.add(item.kind);
     }
-    if (!REQUIRED_EVIDENCE_KINDS.every(kind => kinds.has(kind))) return false;
+    const REQUIRED_EVIDENCE_BY_METHOD = {
+      native_flowsheet: ['flowsheet_model', 'results_record'],
+      engine_properties_explicit_balances: ['calculation_model', 'calculation_input', 'results_record'],
+    };
+    if (!REQUIRED_EVIDENCE_BY_METHOD[method].every(kind => kinds.has(kind))) return false;
+    if (method === 'engine_properties_explicit_balances') {
+      if (!hasSchemeReviewDisclosure(payload)) return false;
+      if (!payload.evidence.some(item => item.kind === 'results_record' && item.sha256 === payload.source_result_sha256)) return false;
+    }
     if (typeof payload.boundary !== 'string' || !payload.boundary.trim()) return false;
-    if (!Array.isArray(payload.assumptions) || !payload.assumptions.length) return false;
+    if (!Array.isArray(payload.assumptions) || payload.assumptions.length === 0) return false;
     if (!payload.results || typeof payload.results !== 'object' || Array.isArray(payload.results)) return false;
     return true;
   }

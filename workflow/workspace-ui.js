@@ -145,7 +145,9 @@
   // 卡片只读，确认放行仍由审核人在阶段动作行完成。
   const RESULT_LABELS={configuration:'方案配置',feed:'进料',product:'浓缩产品',evaporation_total_kg_h:'总蒸发量',effect_split_kg_h:'分效蒸发量',effect_regime:'各效温位',mvr:'MVR 压缩机',heat_load_kw:'换热负荷',convergence:'收敛情况',streams_snapshot:'全流股数据'};
   const RESULT_UNITS=[['_kg_h','kg/h'],['_wt','wt 分数'],['_kpa','kPa'],['_kw','kW'],['_pct','%'],['_bar','bar'],['_c','°C']];
-  const EVIDENCE_LABELS={flowsheet_model:'流程模型文件',results_record:'结果记录',flowsheet_screenshot:'流程截图'};
+  const EVIDENCE_LABELS={
+    'calculation_model':'计算模型',
+    'calculation_input':'计算输入',flowsheet_model:'流程模型文件',results_record:'结果记录',flowsheet_screenshot:'流程截图'};
   function unitOf(key){for(const [suffix,unit] of RESULT_UNITS)if(String(key).endsWith(suffix))return unit;return '';}
   function resultRows(results){
     const rows=[];
@@ -198,20 +200,19 @@ function documentsDeliveryCard(payload,stageStatus){
     return article;
   }
   function calculationDeliveryCard(payload,execution,stageStatus,realCalculationDelivered){
-    // 展示状态以当前依据是否匹配为准；此处只改局部展示变量，不写项目审核状态。
     if(['submitted','confirmed'].includes(stageStatus)&&!realCalculationDelivered){
       stageStatus='stale';
     }
     const article=node('article',undefined,'work-card calculation-delivery-card');
+    const method = payload.calculation_method || 'native_flowsheet';
     const eyebrowMap={
       'draft':'计算草稿 · 待提交',
-      'submitted':'已归类的 Agent 交付 · 真实引擎',
+      'submitted': method === 'engine_properties_explicit_balances' ? '方案计算待审核' : '已归类的 Agent 交付 · 真实引擎',
       'confirmed':'已审核的真实计算结果',
       'stale':'历史计算结果 · 依据已变化',
       'returned':'历史计算结果 · 已退回'
     };
     const eyebrow=eyebrowMap[stageStatus]||'计算结果';
-    // 根据stageStatus和realCalculationDelivered决定note
     let note;
     if(stageStatus==='submitted'){
       if(realCalculationDelivered){
@@ -222,36 +223,113 @@ function documentsDeliveryCard(payload,stageStatus){
     } else if(stageStatus==='stale'||stageStatus==='returned'){
       note='当前依据已变化，待重新计算。本卡片保留供历史对照。';
     } else if(stageStatus==='confirmed'){
-      note='本卡片只读；计算结果已审核，边界见适用说明。';
+      if(method === 'engine_properties_explicit_balances'){
+        note='方案计算已审核 · 未工程签发，边界见适用说明。';
+      } else {
+        note='本卡片只读；计算结果已审核，边界见适用说明。';
+      }
     } else if(stageStatus==='draft'){
       note='本卡片只读；计算草稿待提交审核。';
     } else {
       note='本卡片只读。';
     }
+    const methodLabel = method === 'engine_properties_explicit_balances' ? '真实软件物性调用 + 显式衡算' : '原生流程模拟';
+    const validationScope = payload.validation_scope || '';
+    const validationLabel = validationScope === 'scheme_review' ? '方案评审' : '';
+    const engineeringRelease = payload.engineering_release;
+    const releaseLabel = engineeringRelease === false ? '未工程签发' : '';
+    let title = payload.engine.name + ' ' + payload.engine.version + ' 真实计算结果';
+    if(method === 'engine_properties_explicit_balances'){
+      title = payload.engine.name + ' ' + payload.engine.version + ' ' + methodLabel;
+    }
+    const subtitleParts = ['执行模式：真实引擎', '计算方法：' + methodLabel];
+    if(validationLabel) subtitleParts.push(validationLabel);
+    if(releaseLabel) subtitleParts.push(releaseLabel);
+    subtitleParts.push('模型 ' + (payload.model_version||'未标注'));
+    subtitleParts.push('物性方法 ' + (payload.property_method||'未标注'));
+    if(execution && execution.delivered_action_id){
+      subtitleParts.push('交付记账 ' + execution.delivered_action_id);
+    }
     article.append(node('p',eyebrow,'work-eyebrow'),
-      node('h2',`${payload.engine.name} ${payload.engine.version} 真实计算结果`),
-      node('p',`执行模式：真实引擎 · 模型 ${payload.model_version||'未标注'} · 物性方法 ${payload.property_method||'未标注'}${execution&&execution.delivered_action_id?` · 交付记账 ${execution.delivered_action_id}`:''}`,'muted'),
+      node('h2',title),
+      node('p',subtitleParts.join(' · '),'muted'),
       node('p',note,'muted'));
     const rows=resultRows(payload.results);
     if(rows.length)article.append(tableOf(['项目','结果 / 内容','单位'],rows.map(r=>[r.label,r.value,r.unit||'—'])));
-    const checks=payload.checks&&typeof payload.checks==='object'?Object.entries(payload.checks):[];
-    if(checks.length){
-      const details=node('details');details.append(node('summary',`校核项（${checks.length}）`),
-        tableOf(['校核项','结论'],checks.map(([k,v])=>[k,String(v)])));
+    const findings = payload.source_findings || {};
+    // 执行检查（顶层 checks）
+    if(payload.checks && typeof payload.checks === 'object'){
+      const entries = Object.entries(payload.checks);
+      if(entries.length){
+        const details = node('details');
+        details.open = true;
+        details.append(node('summary','执行检查（' + entries.length + '）'),
+          tableOf(['检查项','结论'],entries.map(function(e){
+            var k=e[0],v=e[1];
+            var display = v === false ? '未通过' : (v === true ? '通过' : String(v));
+            return [k, display];
+          })));
+        article.append(details);
+      }
+    }
+    // 原始工况检查（source_findings.checks）
+    if(findings.checks && typeof findings.checks === 'object'){
+      const entries = Object.entries(findings.checks);
+      if(entries.length){
+        const details = node('details');
+        details.open = true;
+        details.append(node('summary','原始工况检查（' + entries.length + '）'),
+          tableOf(['检查项','结论'],entries.map(function(e){
+            var k=e[0],v=e[1];
+            var display = v === false ? '未通过' : (v === true ? '通过' : String(v));
+            return [k, display];
+          })));
+        article.append(details);
+      }
+    }
+    if(Array.isArray(findings.warnings) && findings.warnings.length){
+      var list = node('ul');
+      for(var wi=0;wi<findings.warnings.length;wi++){
+        list.append(node('li', String(findings.warnings[wi])));
+      }
+      var details = node('details');
+      details.open = true;
+      details.append(node('summary','警告（' + findings.warnings.length + '）'), list);
+      article.append(details);
+    }
+    if(Array.isArray(findings.unmet_conditions) && findings.unmet_conditions.length){
+      var list = node('ul');
+      for(var ci=0;ci<findings.unmet_conditions.length;ci++){
+        list.append(node('li', String(findings.unmet_conditions[ci])));
+      }
+      var details = node('details');
+      details.open = true;
+      details.append(node('summary','未满足条件（' + findings.unmet_conditions.length + '）'), list);
+      article.append(details);
+    }
+    const claimLimits = Array.isArray(payload.claim_limits) ? payload.claim_limits : (Array.isArray(findings.claim_limits) ? findings.claim_limits : []);
+    if(claimLimits.length){
+      var list = node('ul');
+      for(var li=0;li<claimLimits.length;li++){
+        list.append(node('li', String(claimLimits[li])));
+      }
+      var details = node('details');
+      details.open = true;
+      details.append(node('summary','声明限制（' + claimLimits.length + '）'), list);
       article.append(details);
     }
     if(Array.isArray(payload.evidence)&&payload.evidence.length){
-      const details=node('details');details.open=true;
-      details.append(node('summary',`溯源证据（${payload.evidence.length}）`),
+      var details=node('details');details.open=true;
+      details.append(node('summary','溯源证据（' + payload.evidence.length + '）'),
         tableOf(['证据','文件','字节','SHA-256'],
-          payload.evidence.map(e=>[EVIDENCE_LABELS[e.kind]||e.kind,e.label||'—',String(e.bytes||'—'),String(e.sha256||'—').slice(0,16)+'…'])));
+          payload.evidence.map(function(e){return [EVIDENCE_LABELS[e.kind]||e.kind,e.label||'—',String(e.bytes||'—'),String(e.sha256||'—').slice(0,16)+'…'];})));
       article.append(details);
     }
     if(Array.isArray(payload.assumptions)&&payload.assumptions.length){
-      const list=node('ul');for(const a of payload.assumptions)list.append(node('li',a));
-      const details=node('details');details.append(node('summary',`假设与口径（${payload.assumptions.length}）`),list);article.append(details);
+      var list=node('ul');for(var ai=0;ai<payload.assumptions.length;ai++)list.append(node('li',payload.assumptions[ai]));
+      var details=node('details');details.append(node('summary','假设与口径（' + payload.assumptions.length + '）'),list);article.append(details);
     }
-    if(typeof payload.boundary==='string'&&payload.boundary.trim())article.append(node('p',`适用边界：${payload.boundary}`,'work-state'));
+    if(typeof payload.boundary==='string'&&payload.boundary.trim())article.append(node('p','适用边界：' + payload.boundary,'work-state'));
     return article;
   }
   function draw(){
