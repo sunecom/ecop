@@ -12,8 +12,11 @@
 // 溯源硬校验（缺一即拒绝交付）：
 //   execution_mode === 'real_engine'
 //   engine: {name, version} 均非空
-//   evidence: 非空数组，每项 {kind ∈ {flowsheet_model, results_record, flowsheet_screenshot},
-//             sha256(64位hex), bytes(正整数)}，且必含 flowsheet_model 与 results_record
+//   calculation_method 未提供或为 native_flowsheet 时，evidence 必含 flowsheet_model 与 results_record；
+//   calculation_method 为 engine_properties_explicit_balances 时，必须显式声明
+//             validation_scope=scheme_review、engineering_release=false，且 evidence 必含
+//             calculation_model、calculation_input 与 results_record，不能用 flowsheet_model 冒充。
+//   evidence 每项 {kind, sha256(64位hex), bytes(正整数)}；允许额外保留流程截图。
 //   boundary: 非空（真实计算必须声明边界）
 //   assumptions: 非空数组；results: 非空对象
 //   其余字段（input_revision/pfd_revision/checks 全 pass/missing 空等）由 workflow-engine
@@ -21,12 +24,27 @@
 
 const { randomUUID } = require('node:crypto');
 
-const ENGINE_EVIDENCE_KINDS = new Set(['flowsheet_model', 'results_record', 'flowsheet_screenshot']);
-const REQUIRED_EVIDENCE_KINDS = ['flowsheet_model', 'results_record'];
+const CALCULATION_METHODS = new Set(['native_flowsheet', 'engine_properties_explicit_balances']);
+const ENGINE_EVIDENCE_KINDS = new Set([
+  'flowsheet_model',
+  'calculation_model',
+  'calculation_input',
+  'results_record',
+  'flowsheet_screenshot',
+]);
+const REQUIRED_EVIDENCE_BY_METHOD = Object.freeze({
+  native_flowsheet: ['flowsheet_model', 'results_record'],
+  engine_properties_explicit_balances: ['calculation_model', 'calculation_input', 'results_record'],
+});
 const SHA256_RE = /^[a-f0-9]{64}$/;
 
 function provenanceError(message) {
   return { ok: false, error: { code: 'CALC_DELIVERY_PROVENANCE_INVALID', message } };
+}
+
+function calculationMethod(payload) {
+  if (!payload || payload.calculation_method === undefined) return 'native_flowsheet';
+  return CALCULATION_METHODS.has(payload.calculation_method) ? payload.calculation_method : null;
 }
 
 // 结构化判定：载荷是否为携带完整溯源的真实引擎计算结果。
@@ -38,6 +56,14 @@ function isRealEngineCalculation(payload) {
   if (!engine || typeof engine !== 'object' || Array.isArray(engine)) return false;
   if (typeof engine.name !== 'string' || !engine.name.trim()) return false;
   if (typeof engine.version !== 'string' || !engine.version.trim()) return false;
+  const method = calculationMethod(payload);
+  if (!method) return false;
+  if (payload.engineering_release !== undefined && payload.engineering_release !== false) return false;
+  if (method === 'engine_properties_explicit_balances') {
+    if (payload.validation_scope !== 'scheme_review' || payload.engineering_release !== false) return false;
+  } else if (payload.validation_scope !== undefined && payload.validation_scope !== 'scheme_review') {
+    return false;
+  }
   if (!Array.isArray(payload.evidence) || payload.evidence.length === 0) return false;
   const kinds = new Set();
   for (const item of payload.evidence) {
@@ -47,7 +73,7 @@ function isRealEngineCalculation(payload) {
     if (!Number.isInteger(item.bytes) || item.bytes <= 0) return false;
     kinds.add(item.kind);
   }
-  if (!REQUIRED_EVIDENCE_KINDS.every(kind => kinds.has(kind))) return false;
+  if (!REQUIRED_EVIDENCE_BY_METHOD[method].every(kind => kinds.has(kind))) return false;
   if (typeof payload.boundary !== 'string' || !payload.boundary.trim()) return false;
   if (!Array.isArray(payload.assumptions) || payload.assumptions.length === 0) return false;
   if (!payload.results || typeof payload.results !== 'object' || Array.isArray(payload.results)) return false;
@@ -79,7 +105,9 @@ function deliverCalculation(store, projectId, delivery) {
   }
   if (!isRealEngineCalculation(result)) {
     return provenanceError('计算结果溯源不完整：须含 execution_mode=real_engine、engine.name/version、'
-      + 'evidence（必含 flowsheet_model 与 results_record，每项含 sha256(64hex)/bytes）、'
+      + '受支持的 calculation_method；原生流程须含 flowsheet_model+results_record，'
+      + '引擎物性调用+显式衡算须声明 scheme_review/engineering_release=false 并含 '
+      + 'calculation_model+calculation_input+results_record（每项含 sha256(64hex)/bytes）、'
       + '非空 boundary、非空 assumptions、非空 results。');
   }
   return store.transaction(database => {
@@ -118,13 +146,17 @@ function deliverCalculation(store, projectId, delivery) {
       status: 'completed',
       mode: 'real_engine',
       engine: `${result.engine.name} ${result.engine.version}`,
+      calculation_method: calculationMethod(result),
+      validation_scope: result.validation_scope || null,
+      engineering_release: false,
       result_available: true,
       delivered_action_id: editId,
     };
     project.audit.push({
       ts: Date.now(), actor_id: engineerId, action: 'calc_delivery',
       stage_id: 'calculation', engine: `${result.engine.name} ${result.engine.version}`,
-      evidence_count: result.evidence.length, revision: project.revision,
+      calculation_method: calculationMethod(result), validation_scope: result.validation_scope || null,
+      engineering_release: false, evidence_count: result.evidence.length, revision: project.revision,
     });
     store.persistNewAction(database, project, editId);
     store.persistNewAction(database, project, submitId);
@@ -138,6 +170,9 @@ function deliverCalculation(store, projectId, delivery) {
         revision: stage.revision,
         execution_mode: 'real_engine',
         engine: `${result.engine.name} ${result.engine.version}`,
+        calculation_method: calculationMethod(result),
+        validation_scope: result.validation_scope || null,
+        engineering_release: false,
         delivered_by: engineerId,
         action_ids: [editId, submitId],
       },
@@ -145,4 +180,4 @@ function deliverCalculation(store, projectId, delivery) {
   });
 }
 
-module.exports = { deliverCalculation, isRealEngineCalculation, ENGINE_EVIDENCE_KINDS };
+module.exports = { deliverCalculation, isRealEngineCalculation, calculationMethod, ENGINE_EVIDENCE_KINDS, CALCULATION_METHODS };

@@ -44,6 +44,24 @@ function realResult(requirementsRev, pfdRev) {
   };
 }
 
+function schemeReviewResult(requirementsRev, pfdRev) {
+  return {
+    ...realResult(requirementsRev, pfdRev),
+    model_version: 'synthetic-explicit-balance-test-v1',
+    software_version: 'DWSIM 10.2.8 property library',
+    property_method: 'IAPWS-IF97',
+    calculation_method: 'engine_properties_explicit_balances',
+    validation_scope: 'scheme_review',
+    engineering_release: false,
+    evidence: [
+      { kind: 'calculation_model', sha256: 'd'.repeat(64), bytes: 1200, label: 'explicit-model.cs' },
+      { kind: 'calculation_input', sha256: 'e'.repeat(64), bytes: 600, label: 'input.json' },
+      { kind: 'results_record', sha256: 'f'.repeat(64), bytes: 2400, label: 'result.json' },
+    ],
+    boundary: 'Synthetic scheme-review calculation using real property calls and explicit balances; not a native flowsheet or engineering release.',
+  };
+}
+
 function newStore() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecop-calc-delivery-'));
   const store = new WorkflowStore(path.join(dir, 'w.sqlite3'));
@@ -92,6 +110,22 @@ test('isRealEngineCalculation：完整溯源通过', () => {
   assert.equal(isRealEngineCalculation(realResult(1, 1)), true);
 });
 
+test('isRealEngineCalculation：真实物性调用+显式衡算按方案评审范围通过', () => {
+  const base = schemeReviewResult(1, 1);
+  assert.equal(isRealEngineCalculation(base), true);
+  assert.equal(isRealEngineCalculation({ ...base, validation_scope: undefined }), false);
+  assert.equal(isRealEngineCalculation({ ...base, engineering_release: true }), false);
+  assert.equal(isRealEngineCalculation({ ...base, calculation_method: 'unknown_method' }), false);
+  assert.equal(isRealEngineCalculation({ ...base, evidence: base.evidence.filter(item => item.kind !== 'calculation_input') }), false);
+  assert.equal(isRealEngineCalculation({
+    ...base,
+    evidence: [
+      { kind: 'flowsheet_model', sha256: 'a'.repeat(64), bytes: 100 },
+      { kind: 'results_record', sha256: 'b'.repeat(64), bytes: 100 },
+    ],
+  }), false);
+});
+
 test('isRealEngineCalculation：缺项拒绝', () => {
   const base = realResult(1, 1);
   assert.equal(isRealEngineCalculation({ ...base, execution_mode: 'synthetic_mock' }), false);
@@ -119,6 +153,38 @@ test('deliverCalculation：交付+提交+上下文+审计', () => {
     assert.equal(after.execution_context.engine, 'DWSIM 10.2.8');
     assert.ok(after.audit.some(a => a.action === 'calc_delivery'));
     assert.equal(isRealEngineCalculation(after.stages.calculation.payload), true);
+  } finally {
+    cleanup(store, dir);
+  }
+});
+
+test('方案评审计算：工程师交付后仍由独立 reviewer 确认', () => {
+  const { store, dir } = newStore();
+  try {
+    const { pid } = seedConfirmedUpstream(store);
+    const project = store.readProject(pid, ENGINEER).project;
+    const delivery = deliverCalculation(store, pid, {
+      engineer_id: ENGINEER,
+      result: schemeReviewResult(project.stages.requirements.revision, project.stages.pfd.revision),
+    });
+    assert.equal(delivery.ok, true);
+    assert.equal(delivery.calculation.status, 'submitted');
+    assert.equal(delivery.calculation.calculation_method, 'engine_properties_explicit_balances');
+    assert.equal(delivery.calculation.validation_scope, 'scheme_review');
+    assert.equal(delivery.calculation.engineering_release, false);
+    const submitted = store.readProject(pid, REVIEWER).project;
+    assert.equal(submitted.execution_context.calculation_method, 'engine_properties_explicit_balances');
+    assert.equal(submitted.execution_context.engineering_release, false);
+    const confirmed = store.action(REVIEWER, {
+      action_id: 'scheme-review-confirm',
+      project_id: pid,
+      expected_revision: submitted.revision,
+      stage_id: 'calculation',
+      type: 'confirm',
+      payload: {},
+    });
+    assert.equal(confirmed.ok, true);
+    assert.equal(store.readProject(pid, REVIEWER).project.stages.calculation.status, 'confirmed');
   } finally {
     cleanup(store, dir);
   }

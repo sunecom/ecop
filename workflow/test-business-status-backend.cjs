@@ -27,6 +27,20 @@ function result(inputRevision = 2, pfdRevision = 7) {
   };
 }
 
+function schemeReviewResult(inputRevision = 2, pfdRevision = 7) {
+  return {
+    ...result(inputRevision, pfdRevision),
+    calculation_method: "engine_properties_explicit_balances",
+    validation_scope: "scheme_review",
+    engineering_release: false,
+    evidence: [
+      { kind: "calculation_model", sha256: "c".repeat(64), bytes: 30 },
+      { kind: "calculation_input", sha256: "d".repeat(64), bytes: 40 },
+      { kind: "results_record", sha256: "e".repeat(64), bytes: 50 },
+    ],
+  };
+}
+
 function project(calculationOverrides = {}, downstreamStatus = "stale") {
   const stage = (status, revision, payload = null, dependsOn = []) => ({ status, revision, payload, depends_on: dependsOn });
   return {
@@ -79,6 +93,16 @@ test("current submitted real calculation is reviewable", () => {
     reviewable: true,
     confirmed: false,
   });
+  assert.equal(value.next_action.key, "calculation_review");
+});
+
+test("scheme-review calculation with real property calls is current and reviewable", () => {
+  const value = projectBusinessStatus(store(), "project-one", {
+    project: project({ payload: schemeReviewResult() }),
+  });
+  assert.equal(value.calculation_review.current, true);
+  assert.equal(value.calculation_review.reviewable, true);
+  assert.equal(value.calculation_review.historical, false);
   assert.equal(value.next_action.key, "calculation_review");
 });
 
