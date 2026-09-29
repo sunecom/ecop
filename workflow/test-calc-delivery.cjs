@@ -53,6 +53,13 @@ function schemeReviewResult(requirementsRev, pfdRev) {
     calculation_method: 'engine_properties_explicit_balances',
     validation_scope: 'scheme_review',
     engineering_release: false,
+    source_result_sha256: 'f'.repeat(64),
+    source_findings: {
+      checks: { arithmetic_closed: true, operating_limit_met: false },
+      warnings: ['Synthetic unmet operating condition retained for review.'],
+      unmet_conditions: ['operating_limit_met'],
+    },
+    claim_limits: ['A conditional arithmetic result is not an equipment-performance guarantee.'],
     evidence: [
       { kind: 'calculation_model', sha256: 'd'.repeat(64), bytes: 1200, label: 'explicit-model.cs' },
       { kind: 'calculation_input', sha256: 'e'.repeat(64), bytes: 600, label: 'input.json' },
@@ -116,6 +123,12 @@ test('isRealEngineCalculation：真实物性调用+显式衡算按方案评审�
   assert.equal(isRealEngineCalculation({ ...base, validation_scope: undefined }), false);
   assert.equal(isRealEngineCalculation({ ...base, engineering_release: true }), false);
   assert.equal(isRealEngineCalculation({ ...base, calculation_method: 'unknown_method' }), false);
+  assert.equal(isRealEngineCalculation({ ...base, source_result_sha256: '0'.repeat(64) }), false);
+  assert.equal(isRealEngineCalculation({ ...base, claim_limits: [] }), false);
+  assert.equal(isRealEngineCalculation({
+    ...base,
+    source_findings: { ...base.source_findings, unmet_conditions: [] },
+  }), false);
   assert.equal(isRealEngineCalculation({ ...base, evidence: base.evidence.filter(item => item.kind !== 'calculation_input') }), false);
   assert.equal(isRealEngineCalculation({
     ...base,

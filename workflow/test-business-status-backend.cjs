@@ -33,6 +33,13 @@ function schemeReviewResult(inputRevision = 2, pfdRevision = 7) {
     calculation_method: "engine_properties_explicit_balances",
     validation_scope: "scheme_review",
     engineering_release: false,
+    source_result_sha256: "e".repeat(64),
+    source_findings: {
+      checks: { arithmetic_closed: true, operating_limit_met: false },
+      warnings: ["Synthetic unmet operating condition retained."],
+      unmet_conditions: ["operating_limit_met"],
+    },
+    claim_limits: ["Conditional arithmetic is not an equipment guarantee."],
     evidence: [
       { kind: "calculation_model", sha256: "c".repeat(64), bytes: 30 },
       { kind: "calculation_input", sha256: "d".repeat(64), bytes: 40 },

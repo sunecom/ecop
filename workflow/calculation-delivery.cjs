@@ -16,6 +16,8 @@
 //   calculation_method 为 engine_properties_explicit_balances 时，必须显式声明
 //             validation_scope=scheme_review、engineering_release=false，且 evidence 必含
 //             calculation_model、calculation_input 与 results_record，不能用 flowsheet_model 冒充。
+//             同时须用 source_result_sha256 绑定原始结果，并在 source_findings 中保留
+//             原始 checks/warnings/unmet_conditions；claim_limits 必须明确禁止把条件结果升级为保证。
 //   evidence 每项 {kind, sha256(64位hex), bytes(正整数)}；允许额外保留流程截图。
 //   boundary: 非空（真实计算必须声明边界）
 //   assumptions: 非空数组；results: 非空对象
@@ -47,6 +49,22 @@ function calculationMethod(payload) {
   return CALCULATION_METHODS.has(payload.calculation_method) ? payload.calculation_method : null;
 }
 
+function hasSchemeReviewDisclosure(payload) {
+  if (typeof payload.source_result_sha256 !== 'string' || !SHA256_RE.test(payload.source_result_sha256)) return false;
+  if (!Array.isArray(payload.claim_limits) || payload.claim_limits.length === 0
+    || payload.claim_limits.some(item => typeof item !== 'string' || !item.trim())) return false;
+  const findings = payload.source_findings;
+  if (!findings || typeof findings !== 'object' || Array.isArray(findings)) return false;
+  if (!findings.checks || typeof findings.checks !== 'object' || Array.isArray(findings.checks)
+    || Object.keys(findings.checks).length === 0) return false;
+  if (!Array.isArray(findings.warnings) || !Array.isArray(findings.unmet_conditions)) return false;
+  const unmet = new Set(findings.unmet_conditions);
+  const failedChecks = Object.entries(findings.checks)
+    .filter(([, value]) => value === false || value === 'fail' || value === 'failed')
+    .map(([key]) => key);
+  return failedChecks.every(key => unmet.has(key));
+}
+
 // 结构化判定：载荷是否为携带完整溯源的真实引擎计算结果。
 // 用途：①deliverCalculation 交付前校验；②workflow-service.cjs 门禁放行 reviewer confirm。
 function isRealEngineCalculation(payload) {
@@ -74,6 +92,10 @@ function isRealEngineCalculation(payload) {
     kinds.add(item.kind);
   }
   if (!REQUIRED_EVIDENCE_BY_METHOD[method].every(kind => kinds.has(kind))) return false;
+  if (method === 'engine_properties_explicit_balances') {
+    if (!hasSchemeReviewDisclosure(payload)) return false;
+    if (!payload.evidence.some(item => item.kind === 'results_record' && item.sha256 === payload.source_result_sha256)) return false;
+  }
   if (typeof payload.boundary !== 'string' || !payload.boundary.trim()) return false;
   if (!Array.isArray(payload.assumptions) || payload.assumptions.length === 0) return false;
   if (!payload.results || typeof payload.results !== 'object' || Array.isArray(payload.results)) return false;
@@ -107,7 +129,8 @@ function deliverCalculation(store, projectId, delivery) {
     return provenanceError('计算结果溯源不完整：须含 execution_mode=real_engine、engine.name/version、'
       + '受支持的 calculation_method；原生流程须含 flowsheet_model+results_record，'
       + '引擎物性调用+显式衡算须声明 scheme_review/engineering_release=false 并含 '
-      + 'calculation_model+calculation_input+results_record（每项含 sha256(64hex)/bytes）、'
+      + 'calculation_model+calculation_input+results_record（每项含 sha256(64hex)/bytes），'
+      + 'source_result_sha256 必须绑定 results_record，且 source_findings/claim_limits 必须保留原始未满足项和声明边界、'
       + '非空 boundary、非空 assumptions、非空 results。');
   }
   return store.transaction(database => {
