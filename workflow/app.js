@@ -12,7 +12,7 @@
   const roleNames = { customer: "客户", engineer: "工程师", reviewer: "审核人", lead: "负责人" };
   const userNames = { "demo-customer": "客户演示账号", "demo-engineer": "工程师演示账号", "demo-reviewer": "审核人演示账号", "demo-lead": "负责人演示账号",
     "basic:ecop": "ecop · 客户（业主）", "basic:kdx": "柯大侠 · 工程师", "basic:jianguo": "建国 · 审核人" };
-  const statusNames = { draft: "草稿", submitted: "待审核", returned: "已退回", confirmed: "已确认", stale: "需更新" };
+  const statusNames = { draft: "草稿", submitted: "待审核", returned: "已退回", confirmed: "审核已通过", stale: "需更新" };
   const statusSubtitles = { draft: "准备中", submitted: "等待审核", returned: "修改后重新提交", confirmed: "版本已确认", stale: "上游已变化" };
   const defaultPayloads = {
     requirements: { objective: "示例目标：完成单元流程方案", boundary: "合成演示范围", known_inputs: [], missing: ["待补充字段"], assumptions: [] },
@@ -721,8 +721,25 @@
     if (availableProjects.some(item => item.project_id === project.project_id)) refs.projectSelect.value = project.project_id;
     refs.status.textContent = statusNames[stage.status] || stage.status;
     refs.status.className = `status-badge status-${stage.status}`;
-    refs.returnReasonDisplay.hidden = !(businessMode && stage.last_return_reason);
-    refs.returnReasonDisplay.textContent = stage.last_return_reason ? `最近一次退回理由：${stage.last_return_reason}` : "";
+    const showReturnReason = Boolean(businessMode && stage.last_return_reason);
+    refs.returnReasonDisplay.hidden = !(showReturnReason && stage.status === "returned");
+    refs.returnReasonDisplay.textContent = stage.status === "returned" && showReturnReason ? `待修改理由：${stage.last_return_reason}` : "";
+    let returnHistory = byId("stage-return-history");
+    if (!returnHistory) {
+      returnHistory = document.createElement("details");
+      returnHistory.id = "stage-return-history";
+      refs.returnReasonDisplay.parentNode.insertBefore(returnHistory, refs.returnReasonDisplay.nextSibling);
+    }
+    returnHistory.replaceChildren();
+    returnHistory.open = false;
+    returnHistory.hidden = !showReturnReason || stage.status === "returned";
+    if (!returnHistory.hidden) {
+      const summary = document.createElement("summary");
+      summary.textContent = stage.status === "confirmed" ? "历史退回意见（后续已重新审核）" : "历史退回意见";
+      const reason = document.createElement("p");
+      reason.textContent = stage.last_return_reason;
+      returnHistory.append(summary, reason);
+    }
     refs.stageRevision.textContent = `阶段 r${stage.revision}`;
     refs.payload.value = safeJson(displayedPayload);
     const businessRequirementsActive = businessProject && meta.id === "requirements";

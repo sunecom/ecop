@@ -2,7 +2,7 @@
   'use strict';
   const V=root.ECOPWorkflowView, byId=id=>document.getElementById(id);
   let context=null,key='',serial=0,activeView='overview',reviews=[],delivery=null,reviewDrafts=null,reviewDraftsError='',advisories=[],advisoriesError='';
-  let states={reviews:'idle',delivery:'idle'},errors={},busy=false,message='',abort=null,operation=0;
+  let states={reviews:'idle',delivery:'idle'},errors={},busy=false,message='',abort=null,operation=0;let deliveryHistoryNote='';
   const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n;};
   function button(text,fn,disabled=false,secondary=false){const b=node('button',text,secondary?'button button-secondary':'button button-primary');b.type='button';b.disabled=disabled;b.addEventListener('click',fn);return b;}
   const canWrite=()=>context && !context.project.frozen && !context.project.read_only && ['customer','engineer'].includes(context.role);
@@ -20,10 +20,10 @@
   function navigate(view){activeView=view==='overview'||V.STAGES.includes(view)?view:'overview';if(context)draw();}
   async function load(force=false){
     if(!context)return;
-    const c=context,expected=`${c.project.project_id}:${c.project.revision}`;
+    const c=context,expected=`${c.project.project_id}:${c.project.revision}:${c.role}:${c.config.actorId||''}`;
     if(!force && expected===key)return;
     key=expected;const own=++serial;abort?.abort();abort=new AbortController();
-    reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';advisories=[];advisoriesError='';errors={};states={reviews:'loading',delivery:c.project.delivery_review_available?'loading':'missing'};draw();
+    reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';deliveryHistoryNote='';advisories=[];advisoriesError='';errors={};states={reviews:'loading',delivery:c.project.delivery_review_available?'loading':'missing'};draw();
     const tasks=[request(c,'manual-review',undefined,abort.signal).then(data=>{if(!Array.isArray(data.reviews))throw Error('交互记录格式不正确。');return data.reviews;})];
     tasks.push(c.project.delivery_review_available&&c.adapter.getDeliveryReview?c.adapter.getDeliveryReview(c.project.project_id):Promise.resolve(null));
     tasks.push(c.adapter.listReviewDrafts?c.adapter.listReviewDrafts(c.project.project_id):Promise.resolve(null));
@@ -65,6 +65,14 @@
       if(err.status===401||err.status===403){reviewDrafts=null;reviewDraftsError='登录已失效或无权限。';}
       else if(err.status===409){reviewDrafts=null;reviewDraftsError='项目版本已更新，评审草稿清单待重新登记。';}
       else{reviewDrafts=null;reviewDraftsError=err.message||'评审草稿读取失败。';}
+    }
+    // Only classify an explicitly stale legacy record after the CURRENT catalog
+    // has passed project, revision and response validation above.
+    if(b.status==='fulfilled' && b.value?.error?.code==='DELIVERY_PROJECT_CHANGED'
+        && Array.isArray(reviewDrafts) && reviewDrafts.length>0 && !reviewDraftsError){
+      states.delivery='stale';
+      delete errors.delivery;
+      deliveryHistoryNote='历史评审记录已过期；当前版本文件请使用上方下载入口。';
     }
     // 工程建议结果（own!==serial || key!==expected 已在上方统一隔离迟到响应）
     if(adv.status==='fulfilled'){advisories=adv.value;advisoriesError='';}
@@ -338,15 +346,19 @@ function documentsDeliveryCard(payload,stageStatus){
     main.replaceChildren();home.replaceChildren();home.hidden=!overview;main.hidden=overview;
     byId('project-overview-button').setAttribute('aria-current',overview?'page':'false');
     byId('project-overview-button').onclick=()=>navigate('overview');
-    for(const s of model.stages){const b=byId('stage-nav').querySelector(`[data-stage-id="${s.id}"]`);if(b){b.setAttribute('aria-current',!overview&&s.id===activeView?'step':'false');b.querySelector('.step-sub').textContent=s.label;}}
+    for(const s of model.stages){const b=byId('stage-nav').querySelector(`[data-stage-id="${s.id}"]`);if(b){b.setAttribute('aria-current',!overview&&s.id===activeView?'step':'false');b.querySelector('.step-sub').textContent=context.project.stages[s.id]?.status==='confirmed'?'审核已通过':s.label;}}
     byId('workspace-stage-heading').hidden=overview;
-    byId('stage-return-reason').hidden=overview||!context.project.stages[activeView]?.last_return_reason;
+    const activeStage=context.project.stages[activeView];
+    byId('stage-return-reason').hidden=overview||activeStage?.status!=='returned'||!activeStage.last_return_reason;
+    const returnHistory=byId('stage-return-history');
+    if(returnHistory)returnHistory.hidden=overview||activeStage?.status==='returned'||!activeStage?.last_return_reason;
     byId('taskbook-panel').hidden=overview||activeView!=='requirements';
     byId('workspace-advanced').hidden=overview;
     byId('workspace-comments').hidden=overview;
     byId('case-pfd-preview').hidden=overview||activeView!=='pfd'||!context.project.stages.pfd.payload;
     byId('breadcrumb-stage').textContent=overview?'项目总览':V.TITLES[activeView];
     const area=overview?home:main;
+    if(context.role==='customer')area.append(node('p','以下六步为审核人的项目审核状态，不代表业主已接受方案。请进入“方案与文件”审阅三份成果，并在该页“阶段评论”填写修改意见、点击发送。','work-message owner-review-guidance'));
     if(overview){
       home.append(node('p','工程方案工作台','work-eyebrow'),node('h1',context.project.title));
       const grid=node('div',undefined,'overview-grid');
@@ -394,9 +406,12 @@ function documentsDeliveryCard(payload,stageStatus){
     const documentsPayload=activeView==='documents'&&!overview&&V.documentDeliverables(context.project.stages.documents?.payload).length?context.project.stages.documents.payload:null;
     if(activeView==='documents'){
       if(documentsPayload)main.append(documentsDeliveryCard(documentsPayload,context.project.stages.documents?.status));
-      main.append(node('h2','同版评审文件'),node('p',model.deliveryMessage,'work-message'));
-      for(const [id,title] of [['technical-proposal','技术方案评审稿'],['calculation-book','计算依据与结果'],['equipment-parameters','设备参数核对稿']])main.append(button(`下载${title}`,()=>download(id),!model.currentDelivery||busy,true));
-      main.append(node('p','每次下载重新核对项目版本、证据快照与三份内容哈希；评审草稿不等于正式工程签发。','muted'));
+      const hasCurrentDrafts=Array.isArray(reviewDrafts)&&reviewDrafts.length>0&&!reviewDraftsError;
+      const legacySection=node(hasCurrentDrafts?'details':'section',undefined,'work-card legacy-review-section');
+      legacySection.append(node(hasCurrentDrafts?'summary':'h2','历史评审记录与草稿'));
+      legacySection.append(node('p',deliveryHistoryNote||model.deliveryMessage,'muted'));
+      for(const [id,title] of [['technical-proposal','技术方案评审稿'],['calculation-book','计算依据与结果'],['equipment-parameters','设备参数核对稿']])legacySection.append(button(`下载${title}`,()=>download(id),!model.currentDelivery||busy,true));
+      legacySection.append(node('p','历史记录保留追溯；过期文件不可作为当前交付下载。','muted'));
       
       // 评审草稿（受控）下载区
       const draftSection=node('section',undefined,'work-card review-drafts-section');
@@ -447,17 +462,17 @@ function documentsDeliveryCard(payload,stageStatus){
       } else {
         draftSection.append(node('p','暂无可用评审草稿。','muted'));
       }
-      main.append(draftSection);
+      main.append(draftSection,legacySection);
     }
     byId('execution-pill').textContent=model.realCalculationDelivered?'已交付真实计算结果':model.currentDelivery?'已关联实际计算证据':'执行状态见本步骤记录';
     if(model.currentDelivery)byId('case-execution-label').textContent='已关联真实计算证据 · 本次未重跑';
   }
   let draftNote='';
-  function reset(){context=null;key='';serial++;operation++;abort?.abort();reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';advisories=[];advisoriesError='';busy=false;errors={};message='';states={reviews:'idle',delivery:'idle'};activeView='overview';draftNote='';}
+  function reset(){context=null;key='';serial++;operation++;abort?.abort();reviews=[];delivery=null;reviewDrafts=null;reviewDraftsError='';deliveryHistoryNote='';advisories=[];advisoriesError='';busy=false;errors={};message='';states={reviews:'idle',delivery:'idle'};activeView='overview';draftNote='';}
   function render(c){
     byId('project-overview-button').hidden=!c.business;
     if(!c.business){reset();byId('workspace-overview').hidden=true;byId('workspace-business-content').hidden=true;byId('workspace-stage-heading').hidden=false;byId('workspace-advanced').hidden=false;byId('workspace-comments').hidden=false;return;}
-    if(context?.project.project_id!==c.project.project_id){reset();activeView='overview';}
+    if(context?.project.project_id!==c.project.project_id || context?.role!==c.role || context?.config.actorId!==c.config.actorId){reset();activeView='overview';}
     context=c;draw();load();
   }
   root.ECOPWorkspaceUI={render,reset,navigate,refresh:()=>load(true)};
