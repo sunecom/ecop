@@ -1,0 +1,12 @@
+--- a/app/cloud_app.py
++++ b/app/cloud_app.py
+@@ -593,7 +593,8 @@ def workflow_proxy_request(environ, start_response):
+         response_headers = [('Content-Length', str(len(payload))), ('Cache-Control', 'no-store'),
+                             ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'),
+                             ('Referrer-Policy', 'no-referrer')]
+-        for name in ('Content-Type', 'Content-Disposition'):
++        for name in ('Content-Type', 'Content-Disposition',
++                     'X-Review-Draft-Sha256', 'X-Review-Draft-Engineering-Release'):
+             value = response.getheader(name)
+             if value:
+                 response_headers.append((name, value))
